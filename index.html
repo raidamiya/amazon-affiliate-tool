@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>X アフィリエイト投稿ジェネレーター</title>
     <style>
-        /* 前回のCSSをそのまま使用 */
+        /* 前回と同じCSS */
         * {
             margin: 0;
             padding: 0;
@@ -98,17 +98,25 @@
         input[type="url"],
         input[type="text"],
         input[type="search"],
-        select {
+        select,
+        textarea {
             width: 100%;
             padding: 12px;
             border: 2px solid #e1e8ed;
             border-radius: 8px;
             font-size: 15px;
             transition: border-color 0.3s;
+            font-family: inherit;
+        }
+        
+        textarea {
+            min-height: 80px;
+            resize: vertical;
         }
         
         input:focus,
-        select:focus {
+        select:focus,
+        textarea:focus {
             outline: none;
             border-color: #1d9bf0;
         }
@@ -519,6 +527,7 @@
             margin-bottom: 20px;
             color: #666;
             line-height: 1.6;
+            white-space: pre-wrap;
         }
         
         .modal-buttons {
@@ -563,7 +572,6 @@
     </style>
 </head>
 <body>
-    <!-- 前回と同じHTMLコンテンツ -->
     <div class="container">
         <div class="header">
             <h1>🐦 X アフィリエイト投稿ツール</h1>
@@ -576,7 +584,6 @@
             <button class="tab" onclick="switchTab('ranking')">📊 ランキング</button>
         </div>
         
-        <!-- 以下、前回と同じタブコンテンツ... -->
         <!-- URL指定タブ -->
         <div id="manual-tab" class="tab-content active">
             <div class="form-group">
@@ -590,13 +597,19 @@
             </div>
             
             <div class="form-group">
-                <label>📝 投稿スタイル</label>
-                <select id="template">
-                    <option value="casual">カジュアル（絵文字多め）</option>
-                    <option value="formal">フォーマル（シンプル）</option>
-                    <option value="review">レビュー風</option>
-                    <option value="deal">お買い得アピール</option>
-                </select>
+                <label>📝 投稿テンプレート（カスタマイズ可能）</label>
+                <textarea id="customTemplate" placeholder="PR Amazonで{商品名}が{価格}で販売中。&#10;{リンク}">PR Amazonで{商品名}が{価格}で販売中。
+{リンク}</textarea>
+                <small style="color: #666; font-size: 12px;">
+                    使用可能な変数: {商品名}, {価格}, {割引}, {評価}, {リンク}
+                </small>
+            </div>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="useShortUrl" checked style="width: auto;">
+                    短縮URLを使用（タグを隠す）
+                </label>
             </div>
             
             <button class="btn btn-primary" onclick="generateFromUrl()" id="generateBtn">
@@ -627,9 +640,9 @@
             
             <div class="tips">
                 <strong>💡 使い方：</strong><br>
-                1. Amazon商品ページのURLをコピー<br>
+                1. Amazon商品URLをコピー<br>
                 2. アソシエイトタグを入力<br>
-                3. 投稿スタイルを選択<br>
+                3. テンプレートをカスタマイズ<br>
                 4. 「投稿文を生成」をクリック！
             </div>
         </div>
@@ -649,6 +662,13 @@
                         🔍 検索
                     </button>
                 </div>
+            </div>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="useShortUrl-search" checked style="width: auto;">
+                    短縮URLを使用
+                </label>
             </div>
             
             <div class="error" id="error-search"></div>
@@ -717,6 +737,13 @@
             <div class="form-group" id="custom-url-group" style="display: none;">
                 <label>カスタムランキングURL</label>
                 <input type="url" id="customRankingUrl" placeholder="https://www.amazon.co.jp/gp/bestsellers/...">
+            </div>
+            
+            <div class="form-group">
+                <label style="display: flex; align-items: center; gap: 10px;">
+                    <input type="checkbox" id="useShortUrl-ranking" checked style="width: auto;">
+                    短縮URLを使用
+                </label>
             </div>
             
             <div class="error" id="error-ranking"></div>
@@ -825,6 +852,11 @@
                 document.getElementById('tag-search').value = savedTag;
                 document.getElementById('tag-ranking').value = savedTag;
             }
+            
+            const savedTemplate = localStorage.getItem('customTemplate');
+            if (savedTemplate) {
+                document.getElementById('customTemplate').value = savedTemplate;
+            }
         };
         
         function switchTab(tabName) {
@@ -850,9 +882,20 @@
             }
         }
         
-        // 日本語かどうかを判定
         function hasJapanese(text) {
             return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(text);
+        }
+        
+        async function shortenUrl(longUrl) {
+            try {
+                const response = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                if (response.ok) {
+                    return await response.text();
+                }
+            } catch (error) {
+                console.error('短縮URL生成失敗:', error);
+            }
+            return longUrl;
         }
         
         async function fetchWithProxy(url) {
@@ -1217,6 +1260,8 @@
         async function generateAndPostProduct(product, tab, markPosted = true) {
             const tagId = tab === 'ranking' ? 'tag-ranking' : 'tag-search';
             const tag = document.getElementById(tagId).value.trim();
+            const useShortUrlId = tab === 'ranking' ? 'useShortUrl-ranking' : 'useShortUrl-search';
+            const useShortUrl = document.getElementById(useShortUrlId).checked;
             
             if (!tag) {
                 showError(tab, 'アソシエイトタグを入力してください');
@@ -1224,8 +1269,13 @@
             }
             
             try {
-                const affiliateLink = createAffiliateLink(product.url, tag);
-                const postText = createPostText(product, affiliateLink, 'deal');
+                let affiliateLink = createAffiliateLink(product.url, tag);
+                
+                if (useShortUrl) {
+                    affiliateLink = await shortenUrl(affiliateLink);
+                }
+                
+                const postText = createSimplePostText(product, affiliateLink);
                 
                 const tweetUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(postText);
                 window.open(tweetUrl, '_blank', 'width=550,height=420');
@@ -1243,7 +1293,8 @@
         async function generateFromUrl() {
             const url = document.getElementById('amazonUrl').value.trim();
             const tag = document.getElementById('tag').value.trim();
-            const template = document.getElementById('template').value;
+            const template = document.getElementById('customTemplate').value.trim();
+            const useShortUrl = document.getElementById('useShortUrl').checked;
             
             if (!url) {
                 showError('manual', 'Amazon商品URLを入力してください');
@@ -1261,6 +1312,7 @@
             }
             
             localStorage.setItem('amazonTag', tag);
+            localStorage.setItem('customTemplate', template);
             
             hideError('manual');
             document.getElementById('result-manual').classList.remove('show');
@@ -1270,8 +1322,13 @@
             
             try {
                 const productInfo = await fetchProductInfo(url);
-                const affiliateLink = createAffiliateLink(url, tag);
-                const postText = createPostText(productInfo, affiliateLink, template);
+                let affiliateLink = createAffiliateLink(url, tag);
+                
+                if (useShortUrl) {
+                    affiliateLink = await shortenUrl(affiliateLink);
+                }
+                
+                const postText = createCustomPostText(productInfo, affiliateLink, template);
                 currentPostText.manual = postText;
                 
                 document.getElementById('result-manual').textContent = postText;
@@ -1299,96 +1356,121 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
                 
-                // 日本語タイトルを確実に取得
-                let title = '';
-                let titleCandidates = [];
-                
-                // 候補1: productTitle
-                const productTitle = doc.querySelector('#productTitle');
-                if (productTitle) {
-                    const text = productTitle.textContent.trim();
-                    if (hasJapanese(text)) {
-                        titleCandidates.push({ text, score: 10 });
-                    } else {
-                        titleCandidates.push({ text, score: 1 });
-                    }
-                }
-                
-                // 候補2: og:title
-                const ogTitle = doc.querySelector('meta[property="og:title"]');
-                if (ogTitle) {
-                    const text = ogTitle.getAttribute('content').trim();
-                    if (hasJapanese(text)) {
-                        titleCandidates.push({ text, score: 9 });
-                    } else {
-                        titleCandidates.push({ text, score: 2 });
-                    }
-                }
-                
-                // 候補3: title タグ
-                const titleTag = doc.querySelector('title');
-                if (titleTag) {
-                    const text = titleTag.textContent.replace(/^Amazon\.co\.jp[：:]\s*/, '').trim();
-                    if (hasJapanese(text)) {
-                        titleCandidates.push({ text, score: 8 });
-                    }
-                }
-                
-                // 候補4: h1.product-title
-                const h1Title = doc.querySelector('h1.product-title, h1[class*="title"]');
-                if (h1Title) {
-                    const text = h1Title.textContent.trim();
-                    if (hasJapanese(text)) {
-                        titleCandidates.push({ text, score: 7 });
-                    }
-                }
-                
-                // スコアが最も高い候補を選択
-                titleCandidates.sort((a, b) => b.score - a.score);
-                
-                if (titleCandidates.length > 0) {
-                    title = titleCandidates[0].text;
-                } else {
-                    title = '商品情報を取得できませんでした';
-                }
-                
-                // Amazon.co.jpのサフィックスを除去
-                title = title.replace(/\s*[:-]\s*Amazon\.co\.jp.*$/i, '').trim();
-                
-                // 価格（日本円表記）
-                let price = '';
-                let priceWhole = doc.querySelector('.a-price .a-price-whole');
-                let priceFraction = doc.querySelector('.a-price .a-price-fraction');
-                
-                if (priceWhole) {
-                    const whole = priceWhole.textContent.replace(/[,\s]/g, '').replace(/\.?$/, '');
-                    const fraction = priceFraction ? priceFraction.textContent.trim() : '';
-                    price = `¥${whole}${fraction}`;
-                }
-                
-                if (!price) {
-                    const offscreenPrices = doc.querySelectorAll('.a-price .a-offscreen');
-                    for (const priceElem of offscreenPrices) {
-                        const text = priceElem.textContent.trim();
-                        if (text.includes('¥') || text.includes('円')) {
-                            price = text.replace(/\s/g, '');
+                // JSON-LDスキーマから取得を試みる（最も確実）
+                let jsonLdData = null;
+                const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+                for (const script of scripts) {
+                    try {
+                        const data = JSON.parse(script.textContent);
+                        if (data['@type'] === 'Product' || data.name) {
+                            jsonLdData = data;
                             break;
+                        }
+                    } catch (e) {
+                        continue;
+                    }
+                }
+                
+                // タイトル取得
+                let title = '';
+                
+                // 1. JSON-LDから
+                if (jsonLdData && jsonLdData.name) {
+                    title = jsonLdData.name;
+                    console.log('タイトル取得元: JSON-LD');
+                }
+                
+                // 2. productTitle
+                if (!title || !hasJapanese(title)) {
+                    const productTitle = doc.querySelector('#productTitle');
+                    if (productTitle) {
+                        const text = productTitle.textContent.trim();
+                        if (hasJapanese(text)) {
+                            title = text;
+                            console.log('タイトル取得元: productTitle');
                         }
                     }
                 }
                 
-                if (!price) {
-                    const priceBlock = doc.querySelector('#priceblock_ourprice, #priceblock_dealprice, #price_inside_buybox');
-                    if (priceBlock) {
-                        price = priceBlock.textContent.trim().replace(/\s/g, '');
+                // 3. og:title
+                if (!title || !hasJapanese(title)) {
+                    const ogTitle = doc.querySelector('meta[property="og:title"]');
+                    if (ogTitle) {
+                        const text = ogTitle.getAttribute('content').trim();
+                        if (hasJapanese(text)) {
+                            title = text;
+                            console.log('タイトル取得元: og:title');
+                        }
                     }
                 }
                 
-                if (price) {
-                    price = price.replace(/¥\s+/, '¥');
-                    price = price.replace(/[^\d,¥円]/g, '');
-                    if (price.includes('円') && !price.includes('¥')) {
-                        price = '¥' + price.replace('円', '');
+                // 4. title タグ
+                if (!title || !hasJapanese(title)) {
+                    const titleTag = doc.querySelector('title');
+                    if (titleTag) {
+                        const text = titleTag.textContent.replace(/^Amazon\.co\.jp[：:]\s*/, '').trim();
+                        if (hasJapanese(text)) {
+                            title = text;
+                            console.log('タイトル取得元: title');
+                        }
+                    }
+                }
+                
+                if (!title || !hasJapanese(title)) {
+                    title = '商品情報を取得できませんでした';
+                }
+                
+                title = title.replace(/\s*[:-]\s*Amazon\.co\.jp.*$/i, '').trim();
+                
+                // 価格取得
+                let price = '';
+                
+                // 1. JSON-LDから
+                if (jsonLdData && jsonLdData.offers) {
+                    const offers = Array.isArray(jsonLdData.offers) ? jsonLdData.offers[0] : jsonLdData.offers;
+                    if (offers.price) {
+                        price = Math.round(parseFloat(offers.price)) + '円';
+                        console.log('価格取得元: JSON-LD', price);
+                    }
+                }
+                
+                // 2. corePriceDisplay
+                if (!price) {
+                    const corePriceDisplay = doc.querySelector('.a-price[data-a-color="base"] .a-offscreen, .a-price[data-a-color="price"] .a-offscreen');
+                    if (corePriceDisplay) {
+                        const text = corePriceDisplay.textContent.trim();
+                        const match = text.match(/[\d,]+/);
+                        if (match) {
+                            price = match[0].replace(/,/g, '') + '円';
+                            console.log('価格取得元: corePriceDisplay', price);
+                        }
+                    }
+                }
+                
+                // 3. a-price-whole
+                if (!price) {
+                    const priceWhole = doc.querySelector('.a-price .a-price-whole');
+                    const priceFraction = doc.querySelector('.a-price .a-price-fraction');
+                    if (priceWhole) {
+                        const whole = priceWhole.textContent.replace(/[,.\s]/g, '');
+                        const fraction = priceFraction ? priceFraction.textContent.trim() : '';
+                        if (whole) {
+                            price = whole + '円';
+                            console.log('価格取得元: a-price-whole', price);
+                        }
+                    }
+                }
+                
+                // 4. priceblock
+                if (!price) {
+                    const priceBlock = doc.querySelector('#priceblock_ourprice, #priceblock_dealprice, #price_inside_buybox');
+                    if (priceBlock) {
+                        const text = priceBlock.textContent.trim();
+                        const match = text.match(/[\d,]+/);
+                        if (match) {
+                            price = match[0].replace(/,/g, '') + '円';
+                            console.log('価格取得元: priceblock', price);
+                        }
                     }
                 }
                 
@@ -1409,13 +1491,22 @@
                 
                 // レビュー評価
                 let rating = '';
-                const acrPopover = doc.querySelector('#acrPopover');
-                if (acrPopover) {
-                    const titleAttr = acrPopover.getAttribute('title');
-                    if (titleAttr) {
-                        const match = titleAttr.match(/([\d.]+)\s*(?:つ星|out of 5)/i);
-                        if (match) {
-                            rating = `★${match[1]}`;
+                
+                // JSON-LDから
+                if (jsonLdData && jsonLdData.aggregateRating) {
+                    rating = `★${jsonLdData.aggregateRating.ratingValue}`;
+                    console.log('評価取得元: JSON-LD');
+                }
+                
+                if (!rating) {
+                    const acrPopover = doc.querySelector('#acrPopover');
+                    if (acrPopover) {
+                        const titleAttr = acrPopover.getAttribute('title');
+                        if (titleAttr) {
+                            const match = titleAttr.match(/([\d.]+)\s*(?:つ星|out of 5)/i);
+                            if (match) {
+                                rating = `★${match[1]}`;
+                            }
                         }
                     }
                 }
@@ -1437,7 +1528,11 @@
                     reviewCount = reviewText.textContent.trim();
                 }
                 
-                console.log('取得した情報:', { title, price, rating, reviewCount, discount });
+                console.log('=== 取得した情報 ===');
+                console.log('タイトル:', title);
+                console.log('価格:', price);
+                console.log('評価:', rating);
+                console.log('割引:', discount);
                 
                 return {
                     title: title.substring(0, 120),
@@ -1464,59 +1559,26 @@
             return `https://www.amazon.co.jp/dp/${asin}?tag=${tag}`;
         }
         
-        function createPostText(info, link, template) {
-            const templates = {
-                casual: `🛒 これいいかも！
-
-${info.title}
-
-💰 ${info.price}
-${info.discount ? `🏷️ ${info.discount}` : ''}
-${info.rating ? `⭐ ${info.rating}` : ''}
-
-気になる方はこちら👇
-${link}
-
-#Amazon #おすすめ`,
-
-                formal: `【商品紹介】
-
-${info.title}
-
-価格: ${info.price}
-${info.discount ? `割引: ${info.discount}` : ''}
-${info.rating ? `評価: ${info.rating}` : ''}
-
-詳細はこちら
-${link}`,
-
-                review: `使ってみたいと思った商品📦
-
-「${info.title}」
-
-💴 ${info.price}
-${info.discount ? `🏷️ ${info.discount}` : ''}
-${info.rating && info.reviewCount ? `${info.rating}（${info.reviewCount}）` : info.rating || ''}
-
-商品ページ▶︎ ${link}
-
-#Amazon #レビュー`,
-
-                deal: `🎉 見つけた！
-
-${info.title}
-
-✨ ${info.price} で販売中
-${info.discount ? `🏷️ ${info.discount}` : ''}
-${info.rating ? `⭐ ${info.rating}の高評価` : ''}
-
-今すぐチェック👇
-${link}
-
-#Amazonセール #お買い得`
-            };
+        function createSimplePostText(info, link) {
+            const parts = [];
+            parts.push(`PR Amazonで${info.title}が${info.price}で販売中。`);
+            parts.push(link);
             
-            return templates[template] || templates.casual;
+            return parts.join('\n');
+        }
+        
+        function createCustomPostText(info, link, template) {
+            let postText = template || `PR Amazonで{商品名}が{価格}で販売中。\n{リンク}`;
+            
+            postText = postText.replace(/\{商品名\}/g, info.title);
+            postText = postText.replace(/\{価格\}/g, info.price);
+            postText = postText.replace(/\{割引\}/g, info.discount || '');
+            postText = postText.replace(/\{評価\}/g, info.rating || '');
+            postText = postText.replace(/\{リンク\}/g, link);
+            
+            postText = postText.replace(/\n\s*\n/g, '\n').trim();
+            
+            return postText;
         }
         
         function updateCharCount(text, tab) {
