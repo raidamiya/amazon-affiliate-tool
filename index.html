@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>X アフィリエイト投稿ジェネレーター</title>
     <style>
-        /* 前回と同じCSS */
         * {
             margin: 0;
             padding: 0;
@@ -470,6 +469,20 @@
             display: block;
         }
         
+        .info {
+            background: #e3f2fd;
+            border: 2px solid #90caf9;
+            color: #1565c0;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+        
+        .info.show {
+            display: block;
+        }
+        
         .tips {
             background: #e8f5fe;
             border-left: 4px solid #1d9bf0;
@@ -673,6 +686,7 @@
             
             <div class="error" id="error-search"></div>
             <div class="success" id="success-search"></div>
+            <div class="info" id="info-search"></div>
             
             <div id="bulk-actions-search" class="bulk-actions" style="display: none;">
                 <button class="btn btn-warning" onclick="startBulkPost('search')" id="postAll-search">
@@ -748,6 +762,7 @@
             
             <div class="error" id="error-ranking"></div>
             <div class="success" id="success-ranking"></div>
+            <div class="info" id="info-ranking"></div>
             
             <div id="bulk-actions-ranking" class="bulk-actions" style="display: none;">
                 <button class="btn btn-warning" onclick="startBulkPost('ranking')" id="postAll-ranking">
@@ -898,22 +913,33 @@
             return longUrl;
         }
         
-        async function fetchWithProxy(url) {
+        async function fetchWithProxy(url, retries = 3) {
             let lastError;
             
-            for (let i = 0; i < corsProxies.length; i++) {
-                try {
-                    const proxyUrl = corsProxies[i] + encodeURIComponent(url);
-                    console.log(`Trying proxy ${i + 1}:`, corsProxies[i]);
-                    
-                    const response = await fetch(proxyUrl);
-                    if (response.ok) {
-                        currentProxyIndex = i;
-                        return await response.text();
+            for (let attempt = 0; attempt < retries; attempt++) {
+                for (let i = 0; i < corsProxies.length; i++) {
+                    try {
+                        const proxyUrl = corsProxies[i] + encodeURIComponent(url);
+                        console.log(`Attempt ${attempt + 1}, Proxy ${i + 1}:`, corsProxies[i]);
+                        
+                        const response = await fetch(proxyUrl, {
+                            headers: {
+                                'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36'
+                            }
+                        });
+                        
+                        if (response.ok) {
+                            currentProxyIndex = i;
+                            return await response.text();
+                        }
+                    } catch (error) {
+                        console.error(`Proxy ${i + 1} failed:`, error);
+                        lastError = error;
                     }
-                } catch (error) {
-                    console.error(`Proxy ${i + 1} failed:`, error);
-                    lastError = error;
+                }
+                
+                if (attempt < retries - 1) {
+                    await new Promise(resolve => setTimeout(resolve, 1000));
                 }
             }
             
@@ -941,6 +967,7 @@
             document.getElementById('bulk-actions-search').style.display = 'none';
             hideError('search');
             hideSuccess('search');
+            hideInfo('search');
             postedProducts.search.clear();
             
             try {
@@ -948,7 +975,10 @@
                 const products = await scrapeSearchResults(searchUrl);
                 currentProducts.search = products;
                 await displayProducts(products, 'search');
-                document.getElementById('bulk-actions-search').style.display = 'block';
+                
+                if (currentProducts.search.length > 0) {
+                    document.getElementById('bulk-actions-search').style.display = 'block';
+                }
             } catch (error) {
                 showError('search', '検索に失敗しました: ' + error.message);
             } finally {
@@ -1021,13 +1051,17 @@
             document.getElementById('bulk-actions-ranking').style.display = 'none';
             hideError('ranking');
             hideSuccess('ranking');
+            hideInfo('ranking');
             postedProducts.ranking.clear();
             
             try {
                 const products = await scrapeRanking(rankingUrl);
                 currentProducts.ranking = products;
                 await displayProducts(products, 'ranking');
-                document.getElementById('bulk-actions-ranking').style.display = 'block';
+                
+                if (currentProducts.ranking.length > 0) {
+                    document.getElementById('bulk-actions-ranking').style.display = 'block';
+                }
             } catch (error) {
                 showError('ranking', 'ランキングの取得に失敗しました: ' + error.message);
             } finally {
@@ -1080,12 +1114,15 @@
             const listDiv = document.getElementById(listId);
             listDiv.innerHTML = '';
             
+            let successCount = 0;
+            let failCount = 0;
+            
             for (const product of products) {
                 const productDiv = document.createElement('div');
                 productDiv.className = 'product-item';
                 productDiv.id = `product-${tab}-${product.asin}`;
                 productDiv.innerHTML = `
-                    <img src="${product.imageUrl}" alt="商品画像" class="product-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2212%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+                    <img src="${product.imageUrl}" alt="商品画像" class="product-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2212%22%3E読込中%3C/text%3E%3C/svg%3E'">
                     <div class="product-info">
                         <div>
                             <span class="product-rank">#${product.rank}</span>
@@ -1100,6 +1137,16 @@
                 
                 try {
                     const detailedInfo = await fetchProductInfo(product.url);
+                    
+                    // タイトルまたは価格が取得できない場合はスキップ
+                    if (!detailedInfo.title || !hasJapanese(detailedInfo.title) || 
+                        !detailedInfo.price || detailedInfo.price.includes('確認ください')) {
+                        console.log(`商品 ${product.asin} をスキップ: タイトルまたは価格が取得できませんでした`);
+                        productDiv.remove();
+                        failCount++;
+                        continue;
+                    }
+                    
                     product.title = detailedInfo.title;
                     product.price = detailedInfo.price;
                     product.rating = detailedInfo.rating;
@@ -1125,26 +1172,27 @@
                             </div>
                         </div>
                     `;
+                    
+                    successCount++;
+                    
                 } catch (error) {
                     console.error(`商品 ${product.asin} の詳細取得失敗:`, error);
-                    productDiv.innerHTML = `
-                        <img src="${product.imageUrl}" alt="商品画像" class="product-image">
-                        <div class="product-info">
-                            <div>
-                                <span class="product-rank">#${product.rank}</span>
-                            </div>
-                            <div class="product-title">商品情報の取得に失敗しました</div>
-                            <div class="product-actions">
-                                <button class="btn btn-small btn-outline" onclick="window.open('${product.url}', '_blank')">
-                                    🔗 商品ページ
-                                </button>
-                            </div>
-                        </div>
-                    `;
+                    productDiv.remove();
+                    failCount++;
                 }
                 
-                await new Promise(resolve => setTimeout(resolve, 1000));
+                await new Promise(resolve => setTimeout(resolve, 1500));
             }
+            
+            // 取得結果を表示
+            if (successCount > 0) {
+                showInfo(tab, `✅ ${successCount}件の商品を取得しました${failCount > 0 ? ` (${failCount}件スキップ)` : ''}`);
+            } else {
+                showError(tab, '有効な商品情報を取得できませんでした。別のカテゴリをお試しください。');
+            }
+            
+            // 成功した商品のみcurrentProductsに保存
+            currentProducts[tab] = currentProducts[tab].filter(p => p.title && p.price);
         }
         
         function startBulkPost(tab) {
@@ -1322,6 +1370,13 @@
             
             try {
                 const productInfo = await fetchProductInfo(url);
+                
+                if (!productInfo.title || !hasJapanese(productInfo.title) || 
+                    !productInfo.price || productInfo.price.includes('確認ください')) {
+                    showError('manual', '商品情報を正しく取得できませんでした。別の商品URLをお試しください。');
+                    return;
+                }
+                
                 let affiliateLink = createAffiliateLink(url, tag);
                 
                 if (useShortUrl) {
@@ -1356,43 +1411,28 @@
                 const parser = new DOMParser();
                 const doc = parser.parseFromString(html, 'text/html');
                 
-                // JSON-LDスキーマから取得を試みる（最も確実）
-                let jsonLdData = null;
-                const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
-                for (const script of scripts) {
-                    try {
-                        const data = JSON.parse(script.textContent);
-                        if (data['@type'] === 'Product' || data.name) {
-                            jsonLdData = data;
+                // すべての潜在的なセレクタを試す
+                const titleSelectors = [
+                    '#productTitle',
+                    'h1.product-title',
+                    'span#productTitle',
+                    'h1[id*="title"]',
+                    '.product-title-word-break'
+                ];
+                
+                let title = '';
+                for (const selector of titleSelectors) {
+                    const elem = doc.querySelector(selector);
+                    if (elem) {
+                        const text = elem.textContent.trim();
+                        if (hasJapanese(text) && text.length > 5) {
+                            title = text;
+                            console.log('タイトル取得元:', selector);
                             break;
                         }
-                    } catch (e) {
-                        continue;
                     }
                 }
                 
-                // タイトル取得
-                let title = '';
-                
-                // 1. JSON-LDから
-                if (jsonLdData && jsonLdData.name) {
-                    title = jsonLdData.name;
-                    console.log('タイトル取得元: JSON-LD');
-                }
-                
-                // 2. productTitle
-                if (!title || !hasJapanese(title)) {
-                    const productTitle = doc.querySelector('#productTitle');
-                    if (productTitle) {
-                        const text = productTitle.textContent.trim();
-                        if (hasJapanese(text)) {
-                            title = text;
-                            console.log('タイトル取得元: productTitle');
-                        }
-                    }
-                }
-                
-                // 3. og:title
                 if (!title || !hasJapanese(title)) {
                     const ogTitle = doc.querySelector('meta[property="og:title"]');
                     if (ogTitle) {
@@ -1404,72 +1444,58 @@
                     }
                 }
                 
-                // 4. title タグ
                 if (!title || !hasJapanese(title)) {
                     const titleTag = doc.querySelector('title');
                     if (titleTag) {
                         const text = titleTag.textContent.replace(/^Amazon\.co\.jp[：:]\s*/, '').trim();
                         if (hasJapanese(text)) {
                             title = text;
-                            console.log('タイトル取得元: title');
+                            console.log('タイトル取得元: title tag');
                         }
                     }
-                }
-                
-                if (!title || !hasJapanese(title)) {
-                    title = '商品情報を取得できませんでした';
                 }
                 
                 title = title.replace(/\s*[:-]\s*Amazon\.co\.jp.*$/i, '').trim();
                 
-                // 価格取得
+                // 価格取得 - より多くのセレクタを試す
                 let price = '';
+                const priceSelectors = [
+                    '.a-price[data-a-color="price"] .a-offscreen',
+                    '.a-price[data-a-color="base"] .a-offscreen',
+                    '.a-price .a-offscreen',
+                    '#priceblock_ourprice',
+                    '#priceblock_dealprice',
+                    '#price_inside_buybox',
+                    '.a-price-whole',
+                    'span.a-price span.a-offscreen'
+                ];
                 
-                // 1. JSON-LDから
-                if (jsonLdData && jsonLdData.offers) {
-                    const offers = Array.isArray(jsonLdData.offers) ? jsonLdData.offers[0] : jsonLdData.offers;
-                    if (offers.price) {
-                        price = Math.round(parseFloat(offers.price)) + '円';
-                        console.log('価格取得元: JSON-LD', price);
-                    }
-                }
-                
-                // 2. corePriceDisplay
-                if (!price) {
-                    const corePriceDisplay = doc.querySelector('.a-price[data-a-color="base"] .a-offscreen, .a-price[data-a-color="price"] .a-offscreen');
-                    if (corePriceDisplay) {
-                        const text = corePriceDisplay.textContent.trim();
+                for (const selector of priceSelectors) {
+                    const elem = doc.querySelector(selector);
+                    if (elem) {
+                        const text = elem.textContent.trim();
                         const match = text.match(/[\d,]+/);
                         if (match) {
                             price = match[0].replace(/,/g, '') + '円';
-                            console.log('価格取得元: corePriceDisplay', price);
+                            console.log('価格取得元:', selector, price);
+                            break;
                         }
                     }
                 }
                 
-                // 3. a-price-whole
+                // JSON-LDからも試す
                 if (!price) {
-                    const priceWhole = doc.querySelector('.a-price .a-price-whole');
-                    const priceFraction = doc.querySelector('.a-price .a-price-fraction');
-                    if (priceWhole) {
-                        const whole = priceWhole.textContent.replace(/[,.\s]/g, '');
-                        const fraction = priceFraction ? priceFraction.textContent.trim() : '';
-                        if (whole) {
-                            price = whole + '円';
-                            console.log('価格取得元: a-price-whole', price);
-                        }
-                    }
-                }
-                
-                // 4. priceblock
-                if (!price) {
-                    const priceBlock = doc.querySelector('#priceblock_ourprice, #priceblock_dealprice, #price_inside_buybox');
-                    if (priceBlock) {
-                        const text = priceBlock.textContent.trim();
-                        const match = text.match(/[\d,]+/);
-                        if (match) {
-                            price = match[0].replace(/,/g, '') + '円';
-                            console.log('価格取得元: priceblock', price);
+                    const scripts = doc.querySelectorAll('script[type="application/ld+json"]');
+                    for (const script of scripts) {
+                        try {
+                            const data = JSON.parse(script.textContent);
+                            if (data.offers && data.offers.price) {
+                                price = Math.round(parseFloat(data.offers.price)) + '円';
+                                console.log('価格取得元: JSON-LD', price);
+                                break;
+                            }
+                        } catch (e) {
+                            continue;
                         }
                     }
                 }
@@ -1491,22 +1517,13 @@
                 
                 // レビュー評価
                 let rating = '';
-                
-                // JSON-LDから
-                if (jsonLdData && jsonLdData.aggregateRating) {
-                    rating = `★${jsonLdData.aggregateRating.ratingValue}`;
-                    console.log('評価取得元: JSON-LD');
-                }
-                
-                if (!rating) {
-                    const acrPopover = doc.querySelector('#acrPopover');
-                    if (acrPopover) {
-                        const titleAttr = acrPopover.getAttribute('title');
-                        if (titleAttr) {
-                            const match = titleAttr.match(/([\d.]+)\s*(?:つ星|out of 5)/i);
-                            if (match) {
-                                rating = `★${match[1]}`;
-                            }
+                const acrPopover = doc.querySelector('#acrPopover');
+                if (acrPopover) {
+                    const titleAttr = acrPopover.getAttribute('title');
+                    if (titleAttr) {
+                        const match = titleAttr.match(/([\d.]+)\s*(?:つ星|out of 5)/i);
+                        if (match) {
+                            rating = `★${match[1]}`;
                         }
                     }
                 }
@@ -1528,7 +1545,7 @@
                     reviewCount = reviewText.textContent.trim();
                 }
                 
-                console.log('=== 取得した情報 ===');
+                console.log('=== 取得結果 ===');
                 console.log('タイトル:', title);
                 console.log('価格:', price);
                 console.log('評価:', rating);
@@ -1656,6 +1673,20 @@
         function hideSuccess(tab) {
             const successDiv = document.getElementById('success-' + tab);
             successDiv.classList.remove('show');
+        }
+        
+        function showInfo(tab, message) {
+            const infoDiv = document.getElementById('info-' + tab);
+            infoDiv.textContent = 'ℹ️ ' + message;
+            infoDiv.classList.add('show');
+            setTimeout(() => {
+                infoDiv.classList.remove('show');
+            }, 5000);
+        }
+        
+        function hideInfo(tab) {
+            const infoDiv = document.getElementById('info-' + tab);
+            infoDiv.classList.remove('show');
         }
         
         document.getElementById('amazonUrl')?.addEventListener('keypress', function(e) {
