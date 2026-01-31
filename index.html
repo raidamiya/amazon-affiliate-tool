@@ -1,0 +1,1612 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>X アフィリエイト投稿ジェネレーター</title>
+    <style>
+        /* 前回のCSSをそのまま使用 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 900px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 15px;
+            box-shadow: 0 10px 40px rgba(0,0,0,0.2);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: #1d9bf0;
+            color: white;
+            padding: 25px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 24px;
+            margin-bottom: 5px;
+        }
+        
+        .header p {
+            font-size: 14px;
+            opacity: 0.9;
+        }
+        
+        .tabs {
+            display: flex;
+            background: #f7f9fa;
+            border-bottom: 2px solid #e1e8ed;
+        }
+        
+        .tab {
+            flex: 1;
+            padding: 15px;
+            text-align: center;
+            cursor: pointer;
+            border: none;
+            background: transparent;
+            font-size: 14px;
+            font-weight: 600;
+            color: #666;
+            transition: all 0.3s;
+        }
+        
+        .tab:hover {
+            background: rgba(29, 155, 240, 0.1);
+        }
+        
+        .tab.active {
+            color: #1d9bf0;
+            background: white;
+            border-bottom: 3px solid #1d9bf0;
+        }
+        
+        .tab-content {
+            display: none;
+            padding: 25px;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        .form-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #333;
+            font-size: 14px;
+        }
+        
+        input[type="url"],
+        input[type="text"],
+        input[type="search"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e1e8ed;
+            border-radius: 8px;
+            font-size: 15px;
+            transition: border-color 0.3s;
+        }
+        
+        input:focus,
+        select:focus {
+            outline: none;
+            border-color: #1d9bf0;
+        }
+        
+        .btn {
+            padding: 12px 20px;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+        
+        .btn-primary {
+            background: #1d9bf0;
+            color: white;
+            width: 100%;
+            padding: 15px;
+            font-size: 16px;
+        }
+        
+        .btn-primary:hover:not(:disabled) {
+            background: #1a8cd8;
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(29, 155, 240, 0.3);
+        }
+        
+        .btn-primary:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .btn-small {
+            background: #1d9bf0;
+            color: white;
+            padding: 8px 16px;
+            font-size: 13px;
+        }
+        
+        .btn-small:hover {
+            background: #1a8cd8;
+        }
+        
+        .btn-success {
+            background: #10a37f;
+            color: white;
+        }
+        
+        .btn-success:hover {
+            background: #0d8968;
+        }
+        
+        .btn-outline {
+            background: white;
+            color: #1d9bf0;
+            border: 2px solid #1d9bf0;
+        }
+        
+        .btn-outline:hover {
+            background: #1d9bf0;
+            color: white;
+        }
+        
+        .btn-warning {
+            background: #ff9800;
+            color: white;
+        }
+        
+        .btn-warning:hover {
+            background: #f57c00;
+        }
+        
+        .btn-danger {
+            background: #f44336;
+            color: white;
+        }
+        
+        .btn-danger:hover {
+            background: #d32f2f;
+        }
+        
+        .search-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: stretch;
+        }
+        
+        .search-controls input {
+            flex: 3;
+            min-width: 0;
+        }
+        
+        .search-controls .btn {
+            flex: 1;
+            min-width: 100px;
+            white-space: nowrap;
+        }
+        
+        .ranking-controls {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+            align-items: stretch;
+        }
+        
+        .ranking-controls select {
+            flex: 3;
+            min-width: 0;
+        }
+        
+        .ranking-controls .btn {
+            flex: 1;
+            min-width: 100px;
+            white-space: nowrap;
+        }
+        
+        .bulk-actions {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+        
+        .bulk-actions .btn {
+            flex: 1;
+        }
+        
+        .product-list {
+            display: grid;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .product-item {
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            padding: 15px;
+            display: flex;
+            gap: 15px;
+            transition: all 0.3s;
+            background: white;
+            position: relative;
+        }
+        
+        .product-item:hover {
+            border-color: #1d9bf0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+        
+        .product-item.generating {
+            opacity: 0.6;
+            pointer-events: none;
+        }
+        
+        .product-item.posted {
+            background: #f0f8ff;
+            border-color: #10a37f;
+        }
+        
+        .product-image {
+            flex-shrink: 0;
+            width: 100px;
+            height: 100px;
+            object-fit: contain;
+            border-radius: 5px;
+            background: #f7f9fa;
+        }
+        
+        .product-info {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+            min-width: 0;
+        }
+        
+        .product-rank {
+            display: inline-block;
+            background: #ffd700;
+            color: #333;
+            padding: 2px 8px;
+            border-radius: 3px;
+            font-size: 12px;
+            font-weight: 700;
+        }
+        
+        .product-title {
+            font-size: 14px;
+            font-weight: 600;
+            color: #333;
+            line-height: 1.4;
+            overflow: hidden;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            word-break: break-word;
+        }
+        
+        .product-price {
+            font-size: 16px;
+            color: #B12704;
+            font-weight: 700;
+        }
+        
+        .product-discount {
+            font-size: 12px;
+            color: #CC0C39;
+            font-weight: 600;
+        }
+        
+        .product-rating {
+            font-size: 13px;
+            color: #FFA41C;
+        }
+        
+        .product-actions {
+            display: flex;
+            gap: 5px;
+            margin-top: auto;
+            flex-wrap: wrap;
+        }
+        
+        .posted-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #10a37f;
+            color: white;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+        }
+        
+        .posted-badge:hover {
+            background: #0d8968;
+        }
+        
+        .result {
+            background: #f7f9fa;
+            border: 2px solid #e1e8ed;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+            font-size: 14px;
+            line-height: 1.6;
+            display: none;
+        }
+        
+        .result.show {
+            display: block;
+            animation: slideIn 0.3s ease-out;
+        }
+        
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
+        .char-count {
+            text-align: right;
+            font-size: 13px;
+            color: #666;
+            margin-top: 5px;
+        }
+        
+        .char-count.warning {
+            color: #f91880;
+            font-weight: 600;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+        }
+        
+        .loading-inline {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 20px;
+            color: #666;
+        }
+        
+        .loading-inline.show {
+            display: flex;
+        }
+        
+        .spinner {
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #1d9bf0;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 15px;
+        }
+        
+        .spinner-small {
+            border: 2px solid #f3f3f3;
+            border-top: 2px solid #1d9bf0;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .error {
+            background: #fee;
+            border: 2px solid #fcc;
+            color: #c00;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+        
+        .error.show {
+            display: block;
+        }
+        
+        .success {
+            background: #e8f5e9;
+            border: 2px solid #81c784;
+            color: #2e7d32;
+            padding: 15px;
+            border-radius: 8px;
+            margin: 15px 0;
+            display: none;
+        }
+        
+        .success.show {
+            display: block;
+        }
+        
+        .tips {
+            background: #e8f5fe;
+            border-left: 4px solid #1d9bf0;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 5px;
+            font-size: 13px;
+            line-height: 1.6;
+        }
+        
+        .tips strong {
+            color: #1d9bf0;
+        }
+        
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        
+        .button-group .btn {
+            flex: 1;
+        }
+        
+        .modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .modal.show {
+            display: flex;
+        }
+        
+        .modal-content {
+            background: white;
+            padding: 30px;
+            border-radius: 15px;
+            max-width: 500px;
+            text-align: center;
+        }
+        
+        .modal-content h3 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+        
+        .modal-content p {
+            margin-bottom: 20px;
+            color: #666;
+            line-height: 1.6;
+        }
+        
+        .modal-buttons {
+            display: flex;
+            gap: 10px;
+        }
+        
+        @media (max-width: 768px) {
+            .product-item {
+                flex-direction: column;
+                text-align: center;
+            }
+            
+            .product-image {
+                width: 100%;
+                height: 150px;
+            }
+            
+            .button-group {
+                flex-direction: column;
+            }
+            
+            .ranking-controls,
+            .search-controls {
+                flex-direction: column;
+            }
+            
+            .ranking-controls .btn,
+            .search-controls .btn {
+                min-width: auto;
+            }
+            
+            .tabs {
+                flex-wrap: wrap;
+            }
+            
+            .tab {
+                font-size: 12px;
+                padding: 12px 8px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <!-- 前回と同じHTMLコンテンツ -->
+    <div class="container">
+        <div class="header">
+            <h1>🐦 X アフィリエイト投稿ツール</h1>
+            <p>Amazonから簡単投稿</p>
+        </div>
+        
+        <div class="tabs">
+            <button class="tab active" onclick="switchTab('manual')">🔗 URL指定</button>
+            <button class="tab" onclick="switchTab('search')">🔍 商品検索</button>
+            <button class="tab" onclick="switchTab('ranking')">📊 ランキング</button>
+        </div>
+        
+        <!-- 以下、前回と同じタブコンテンツ... -->
+        <!-- URL指定タブ -->
+        <div id="manual-tab" class="tab-content active">
+            <div class="form-group">
+                <label>📦 Amazon商品URL</label>
+                <input type="url" id="amazonUrl" placeholder="https://www.amazon.co.jp/dp/B0XXXXXXXXX">
+            </div>
+            
+            <div class="form-group">
+                <label>🏷️ アソシエイトタグ</label>
+                <input type="text" id="tag" placeholder="yourname-22" value="">
+            </div>
+            
+            <div class="form-group">
+                <label>📝 投稿スタイル</label>
+                <select id="template">
+                    <option value="casual">カジュアル（絵文字多め）</option>
+                    <option value="formal">フォーマル（シンプル）</option>
+                    <option value="review">レビュー風</option>
+                    <option value="deal">お買い得アピール</option>
+                </select>
+            </div>
+            
+            <button class="btn btn-primary" onclick="generateFromUrl()" id="generateBtn">
+                ✨ 投稿文を生成
+            </button>
+            
+            <div class="loading-inline" id="loading-manual">
+                <div class="spinner-small"></div>
+                <span>生成中です...</span>
+            </div>
+            
+            <div class="error" id="error-manual"></div>
+            
+            <div class="result" id="result-manual"></div>
+            
+            <div id="charCount-manual" class="char-count"></div>
+            
+            <div id="actions-manual" style="display: none;">
+                <div class="button-group">
+                    <button class="btn btn-success" onclick="postToX('manual')">
+                        🐦 Xで投稿する
+                    </button>
+                    <button class="btn btn-outline" onclick="copyText('manual')">
+                        📋 コピー
+                    </button>
+                </div>
+            </div>
+            
+            <div class="tips">
+                <strong>💡 使い方：</strong><br>
+                1. Amazon商品ページのURLをコピー<br>
+                2. アソシエイトタグを入力<br>
+                3. 投稿スタイルを選択<br>
+                4. 「投稿文を生成」をクリック！
+            </div>
+        </div>
+        
+        <!-- 検索タブ -->
+        <div id="search-tab" class="tab-content">
+            <div class="form-group">
+                <label>🏷️ アソシエイトタグ</label>
+                <input type="text" id="tag-search" placeholder="yourname-22" value="">
+            </div>
+            
+            <div class="form-group">
+                <label>🔍 商品検索キーワード</label>
+                <div class="search-controls">
+                    <input type="search" id="searchQuery" placeholder="商品名やキーワードを入力">
+                    <button class="btn btn-primary" onclick="searchProducts()">
+                        🔍 検索
+                    </button>
+                </div>
+            </div>
+            
+            <div class="error" id="error-search"></div>
+            <div class="success" id="success-search"></div>
+            
+            <div id="bulk-actions-search" class="bulk-actions" style="display: none;">
+                <button class="btn btn-warning" onclick="startBulkPost('search')" id="postAll-search">
+                    🚀 順番に投稿
+                </button>
+                <button class="btn btn-danger" onclick="resetPosted('search')">
+                    🔄 リセット
+                </button>
+            </div>
+            
+            <div class="loading" id="search-loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>商品を検索中...</p>
+            </div>
+            
+            <div id="search-results" class="product-list"></div>
+            
+            <div class="tips">
+                <strong>💡 使い方：</strong><br>
+                1. 商品名やキーワードを入力<br>
+                2. 「検索」をクリック<br>
+                3. 個別または順番に投稿！
+            </div>
+        </div>
+        
+        <!-- ランキングタブ -->
+        <div id="ranking-tab" class="tab-content">
+            <div class="form-group">
+                <label>🏷️ アソシエイトタグ</label>
+                <input type="text" id="tag-ranking" placeholder="yourname-22" value="">
+            </div>
+            
+            <div class="form-group">
+                <label>📊 カテゴリ選択</label>
+                <div class="ranking-controls">
+                    <select id="category" onchange="updateCategoryUrl()">
+                        <option value="bestsellers">総合ベストセラー</option>
+                        <option value="kitchen">ホーム&キッチン</option>
+                        <option value="electronics">家電&カメラ</option>
+                        <option value="computers">パソコン・周辺機器</option>
+                        <option value="books">本</option>
+                        <option value="dvd">DVD・ミュージック</option>
+                        <option value="toys">おもちゃ</option>
+                        <option value="hobby">ホビー</option>
+                        <option value="sports">スポーツ&アウトドア</option>
+                        <option value="diy">DIY・工具</option>
+                        <option value="food">食品・飲料</option>
+                        <option value="beauty">ビューティー</option>
+                        <option value="fashion">ファッション</option>
+                        <option value="jewelry">ジュエリー</option>
+                        <option value="shoes">シューズ&バッグ</option>
+                        <option value="pet">ペット用品</option>
+                        <option value="baby">ベビー&マタニティ</option>
+                        <option value="custom">カスタムURL</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="fetchRanking()">
+                        📊 取得
+                    </button>
+                </div>
+            </div>
+            
+            <div class="form-group" id="custom-url-group" style="display: none;">
+                <label>カスタムランキングURL</label>
+                <input type="url" id="customRankingUrl" placeholder="https://www.amazon.co.jp/gp/bestsellers/...">
+            </div>
+            
+            <div class="error" id="error-ranking"></div>
+            <div class="success" id="success-ranking"></div>
+            
+            <div id="bulk-actions-ranking" class="bulk-actions" style="display: none;">
+                <button class="btn btn-warning" onclick="startBulkPost('ranking')" id="postAll-ranking">
+                    🚀 順番に投稿
+                </button>
+                <button class="btn btn-danger" onclick="resetPosted('ranking')">
+                    🔄 リセット
+                </button>
+            </div>
+            
+            <div id="ranking-loading" class="loading" style="display: none;">
+                <div class="spinner"></div>
+                <p>ランキング取得中...</p>
+            </div>
+            
+            <div id="product-list" class="product-list"></div>
+            
+            <div class="tips">
+                <strong>💡 使い方：</strong><br>
+                1. カテゴリを選択<br>
+                2. 「取得」をクリック<br>
+                3. 個別または順番に投稿！
+            </div>
+        </div>
+    </div>
+    
+    <!-- モーダル -->
+    <div id="bulk-modal" class="modal">
+        <div class="modal-content">
+            <h3 id="modal-title">投稿の準備ができました</h3>
+            <p id="modal-message">投稿画面を開きます</p>
+            <div class="modal-buttons button-group">
+                <button class="btn btn-success" onclick="postCurrentProduct()">
+                    🐦 投稿画面を開く
+                </button>
+                <button class="btn btn-primary" onclick="nextProduct()">
+                    ➡️ 次へ
+                </button>
+                <button class="btn btn-outline" onclick="cancelBulkPost()">
+                    ❌ 中止
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        let currentPostText = {
+            manual: '',
+            search: '',
+            ranking: ''
+        };
+        
+        let currentProducts = {
+            search: [],
+            ranking: []
+        };
+        
+        let postedProducts = {
+            search: new Set(),
+            ranking: new Set()
+        };
+        
+        let bulkPostState = {
+            active: false,
+            tab: '',
+            currentIndex: 0,
+            products: []
+        };
+        
+        const categoryUrls = {
+            bestsellers: 'https://www.amazon.co.jp/gp/bestsellers/',
+            kitchen: 'https://www.amazon.co.jp/gp/bestsellers/kitchen/',
+            electronics: 'https://www.amazon.co.jp/gp/bestsellers/electronics/',
+            computers: 'https://www.amazon.co.jp/gp/bestsellers/computers/',
+            books: 'https://www.amazon.co.jp/gp/bestsellers/books/',
+            dvd: 'https://www.amazon.co.jp/gp/bestsellers/dvd/',
+            toys: 'https://www.amazon.co.jp/gp/bestsellers/toys/',
+            hobby: 'https://www.amazon.co.jp/gp/bestsellers/hobby/',
+            sports: 'https://www.amazon.co.jp/gp/bestsellers/sports/',
+            diy: 'https://www.amazon.co.jp/gp/bestsellers/diy/',
+            food: 'https://www.amazon.co.jp/gp/bestsellers/food-beverage/',
+            beauty: 'https://www.amazon.co.jp/gp/bestsellers/beauty/',
+            fashion: 'https://www.amazon.co.jp/gp/bestsellers/fashion/',
+            jewelry: 'https://www.amazon.co.jp/gp/bestsellers/jewelry/',
+            shoes: 'https://www.amazon.co.jp/gp/bestsellers/shoes/',
+            pet: 'https://www.amazon.co.jp/gp/bestsellers/pet-supplies/',
+            baby: 'https://www.amazon.co.jp/gp/bestsellers/baby/'
+        };
+        
+        const corsProxies = [
+            'https://corsproxy.io/?',
+            'https://api.allorigins.win/raw?url=',
+            'https://api.codetabs.com/v1/proxy?quest='
+        ];
+        
+        let currentProxyIndex = 0;
+        
+        window.onload = function() {
+            const savedTag = localStorage.getItem('amazonTag');
+            if (savedTag) {
+                document.getElementById('tag').value = savedTag;
+                document.getElementById('tag-search').value = savedTag;
+                document.getElementById('tag-ranking').value = savedTag;
+            }
+        };
+        
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            event.target.classList.add('active');
+            
+            document.querySelectorAll('.tab-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            document.getElementById(tabName + '-tab').classList.add('active');
+        }
+        
+        function updateCategoryUrl() {
+            const category = document.getElementById('category').value;
+            const customUrlGroup = document.getElementById('custom-url-group');
+            
+            if (category === 'custom') {
+                customUrlGroup.style.display = 'block';
+            } else {
+                customUrlGroup.style.display = 'none';
+            }
+        }
+        
+        // 日本語かどうかを判定
+        function hasJapanese(text) {
+            return /[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]/.test(text);
+        }
+        
+        async function fetchWithProxy(url) {
+            let lastError;
+            
+            for (let i = 0; i < corsProxies.length; i++) {
+                try {
+                    const proxyUrl = corsProxies[i] + encodeURIComponent(url);
+                    console.log(`Trying proxy ${i + 1}:`, corsProxies[i]);
+                    
+                    const response = await fetch(proxyUrl);
+                    if (response.ok) {
+                        currentProxyIndex = i;
+                        return await response.text();
+                    }
+                } catch (error) {
+                    console.error(`Proxy ${i + 1} failed:`, error);
+                    lastError = error;
+                }
+            }
+            
+            throw new Error('すべてのプロキシで失敗しました');
+        }
+        
+        async function searchProducts() {
+            const query = document.getElementById('searchQuery').value.trim();
+            const tag = document.getElementById('tag-search').value.trim();
+            
+            if (!query) {
+                showError('search', '検索キーワードを入力してください');
+                return;
+            }
+            
+            if (!tag) {
+                showError('search', 'アソシエイトタグを入力してください');
+                return;
+            }
+            
+            localStorage.setItem('amazonTag', tag);
+            
+            document.getElementById('search-loading').style.display = 'block';
+            document.getElementById('search-results').innerHTML = '';
+            document.getElementById('bulk-actions-search').style.display = 'none';
+            hideError('search');
+            hideSuccess('search');
+            postedProducts.search.clear();
+            
+            try {
+                const searchUrl = `https://www.amazon.co.jp/s?k=${encodeURIComponent(query)}`;
+                const products = await scrapeSearchResults(searchUrl);
+                currentProducts.search = products;
+                await displayProducts(products, 'search');
+                document.getElementById('bulk-actions-search').style.display = 'block';
+            } catch (error) {
+                showError('search', '検索に失敗しました: ' + error.message);
+            } finally {
+                document.getElementById('search-loading').style.display = 'none';
+            }
+        }
+        
+        async function scrapeSearchResults(url) {
+            const html = await fetchWithProxy(url);
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            const products = [];
+            const items = doc.querySelectorAll('[data-component-type="s-search-result"]');
+            
+            for (let i = 0; i < Math.min(items.length, 10); i++) {
+                const item = items[i];
+                
+                const asin = item.getAttribute('data-asin');
+                if (!asin) continue;
+                
+                const productUrl = `https://www.amazon.co.jp/dp/${asin}`;
+                
+                const imgElem = item.querySelector('img.s-image');
+                const imageUrl = imgElem ? imgElem.src : '';
+                
+                products.push({
+                    rank: i + 1,
+                    asin,
+                    url: productUrl,
+                    imageUrl,
+                    title: '',
+                    price: '',
+                    rating: '',
+                    discount: ''
+                });
+            }
+            
+            if (products.length === 0) {
+                throw new Error('商品が見つかりませんでした');
+            }
+            
+            return products;
+        }
+        
+        async function fetchRanking() {
+            const category = document.getElementById('category').value;
+            const tag = document.getElementById('tag-ranking').value.trim();
+            let rankingUrl;
+            
+            if (!tag) {
+                showError('ranking', 'アソシエイトタグを入力してください');
+                return;
+            }
+            
+            if (category === 'custom') {
+                rankingUrl = document.getElementById('customRankingUrl').value;
+                if (!rankingUrl) {
+                    showError('ranking', 'カスタムURLを入力してください');
+                    return;
+                }
+            } else {
+                rankingUrl = categoryUrls[category];
+            }
+            
+            localStorage.setItem('amazonTag', tag);
+            
+            document.getElementById('ranking-loading').style.display = 'block';
+            document.getElementById('product-list').innerHTML = '';
+            document.getElementById('bulk-actions-ranking').style.display = 'none';
+            hideError('ranking');
+            hideSuccess('ranking');
+            postedProducts.ranking.clear();
+            
+            try {
+                const products = await scrapeRanking(rankingUrl);
+                currentProducts.ranking = products;
+                await displayProducts(products, 'ranking');
+                document.getElementById('bulk-actions-ranking').style.display = 'block';
+            } catch (error) {
+                showError('ranking', 'ランキングの取得に失敗しました: ' + error.message);
+            } finally {
+                document.getElementById('ranking-loading').style.display = 'none';
+            }
+        }
+        
+        async function scrapeRanking(url) {
+            const html = await fetchWithProxy(url);
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(html, 'text/html');
+            
+            const products = [];
+            const items = doc.querySelectorAll('.zg-grid-general-faceout, .p13n-sc-uncoverable-faceout, [data-asin]');
+            
+            for (let i = 0; i < Math.min(items.length, 10); i++) {
+                const item = items[i];
+                
+                const asin = item.getAttribute('data-asin') || 
+                            item.querySelector('[data-asin]')?.getAttribute('data-asin');
+                
+                if (!asin || asin === '') continue;
+                
+                const productUrl = `https://www.amazon.co.jp/dp/${asin}`;
+                
+                const imgElem = item.querySelector('img');
+                const imageUrl = imgElem ? imgElem.src : '';
+                
+                products.push({
+                    rank: products.length + 1,
+                    asin,
+                    url: productUrl,
+                    imageUrl,
+                    title: '',
+                    price: '',
+                    rating: '',
+                    discount: ''
+                });
+            }
+            
+            if (products.length === 0) {
+                throw new Error('商品を取得できませんでした');
+            }
+            
+            return products;
+        }
+        
+        async function displayProducts(products, tab) {
+            const listId = tab === 'ranking' ? 'product-list' : 'search-results';
+            const listDiv = document.getElementById(listId);
+            listDiv.innerHTML = '';
+            
+            for (const product of products) {
+                const productDiv = document.createElement('div');
+                productDiv.className = 'product-item';
+                productDiv.id = `product-${tab}-${product.asin}`;
+                productDiv.innerHTML = `
+                    <img src="${product.imageUrl}" alt="商品画像" class="product-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2212%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+                    <div class="product-info">
+                        <div>
+                            <span class="product-rank">#${product.rank}</span>
+                        </div>
+                        <div class="product-title">読み込み中...</div>
+                        <div class="product-actions">
+                            <div class="spinner-small"></div>
+                        </div>
+                    </div>
+                `;
+                listDiv.appendChild(productDiv);
+                
+                try {
+                    const detailedInfo = await fetchProductInfo(product.url);
+                    product.title = detailedInfo.title;
+                    product.price = detailedInfo.price;
+                    product.rating = detailedInfo.rating;
+                    product.discount = detailedInfo.discount;
+                    
+                    productDiv.innerHTML = `
+                        <img src="${product.imageUrl}" alt="${product.title}" class="product-image" onerror="this.src='data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%22100%22 height=%22100%22%3E%3Crect fill=%22%23ddd%22 width=%22100%22 height=%22100%22/%3E%3Ctext x=%2250%25%22 y=%2250%25%22 dominant-baseline=%22middle%22 text-anchor=%22middle%22 fill=%22%23999%22 font-size=%2212%22%3ENo Image%3C/text%3E%3C/svg%3E'">
+                        <div class="product-info">
+                            <div>
+                                <span class="product-rank">#${product.rank}</span>
+                            </div>
+                            <div class="product-title">${product.title}</div>
+                            ${product.price ? `<div class="product-price">${product.price}</div>` : ''}
+                            ${product.discount ? `<div class="product-discount">${product.discount}</div>` : ''}
+                            ${product.rating ? `<div class="product-rating">${product.rating}</div>` : ''}
+                            <div class="product-actions">
+                                <button class="btn btn-small" onclick='generateAndPostProduct(${JSON.stringify(product).replace(/'/g, "&apos;")}, "${tab}")'>
+                                    ✨ 生成して投稿
+                                </button>
+                                <button class="btn btn-small btn-outline" onclick="window.open('${product.url}', '_blank')">
+                                    🔗 商品ページ
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                } catch (error) {
+                    console.error(`商品 ${product.asin} の詳細取得失敗:`, error);
+                    productDiv.innerHTML = `
+                        <img src="${product.imageUrl}" alt="商品画像" class="product-image">
+                        <div class="product-info">
+                            <div>
+                                <span class="product-rank">#${product.rank}</span>
+                            </div>
+                            <div class="product-title">商品情報の取得に失敗しました</div>
+                            <div class="product-actions">
+                                <button class="btn btn-small btn-outline" onclick="window.open('${product.url}', '_blank')">
+                                    🔗 商品ページ
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+                
+                await new Promise(resolve => setTimeout(resolve, 1000));
+            }
+        }
+        
+        function startBulkPost(tab) {
+            const products = currentProducts[tab].filter(p => !postedProducts[tab].has(p.asin));
+            
+            if (products.length === 0) {
+                showError(tab, 'すべて投稿済みです');
+                return;
+            }
+            
+            bulkPostState = {
+                active: true,
+                tab: tab,
+                currentIndex: 0,
+                products: products
+            };
+            
+            showBulkModal();
+        }
+        
+        function showBulkModal() {
+            if (!bulkPostState.active || bulkPostState.currentIndex >= bulkPostState.products.length) {
+                cancelBulkPost();
+                return;
+            }
+            
+            const product = bulkPostState.products[bulkPostState.currentIndex];
+            const remaining = bulkPostState.products.length - bulkPostState.currentIndex;
+            
+            document.getElementById('modal-title').textContent = `商品 ${bulkPostState.currentIndex + 1} / ${bulkPostState.products.length}`;
+            document.getElementById('modal-message').textContent = `${product.title.substring(0, 60)}...\n\n残り ${remaining} 件`;
+            document.getElementById('bulk-modal').classList.add('show');
+        }
+        
+        function postCurrentProduct() {
+            const product = bulkPostState.products[bulkPostState.currentIndex];
+            const tab = bulkPostState.tab;
+            
+            generateAndPostProduct(product, tab, false);
+        }
+        
+        function nextProduct() {
+            const product = bulkPostState.products[bulkPostState.currentIndex];
+            const tab = bulkPostState.tab;
+            
+            markAsPosted(product.asin, tab);
+            
+            bulkPostState.currentIndex++;
+            
+            if (bulkPostState.currentIndex >= bulkPostState.products.length) {
+                showSuccess(tab, `${bulkPostState.products.length}件の投稿が完了しました！`);
+                cancelBulkPost();
+            } else {
+                showBulkModal();
+            }
+        }
+        
+        function cancelBulkPost() {
+            bulkPostState.active = false;
+            document.getElementById('bulk-modal').classList.remove('show');
+        }
+        
+        function markAsPosted(asin, tab) {
+            postedProducts[tab].add(asin);
+            
+            const productDiv = document.getElementById(`product-${tab}-${asin}`);
+            if (productDiv) {
+                productDiv.classList.add('posted');
+                
+                if (!productDiv.querySelector('.posted-badge')) {
+                    const badge = document.createElement('div');
+                    badge.className = 'posted-badge';
+                    badge.textContent = '✓ 投稿済み';
+                    badge.onclick = () => unmarkPosted(asin, tab);
+                    badge.title = 'クリックで解除';
+                    productDiv.appendChild(badge);
+                }
+            }
+        }
+        
+        function unmarkPosted(asin, tab) {
+            postedProducts[tab].delete(asin);
+            
+            const productDiv = document.getElementById(`product-${tab}-${asin}`);
+            if (productDiv) {
+                productDiv.classList.remove('posted');
+                const badge = productDiv.querySelector('.posted-badge');
+                if (badge) {
+                    badge.remove();
+                }
+            }
+        }
+        
+        function resetPosted(tab) {
+            if (confirm('すべての投稿済みマークを解除しますか？')) {
+                postedProducts[tab].clear();
+                
+                const listId = tab === 'ranking' ? 'product-list' : 'search-results';
+                const productDivs = document.querySelectorAll(`#${listId} .product-item`);
+                
+                productDivs.forEach(div => {
+                    div.classList.remove('posted');
+                    const badge = div.querySelector('.posted-badge');
+                    if (badge) {
+                        badge.remove();
+                    }
+                });
+                
+                showSuccess(tab, '投稿済みマークをすべて解除しました');
+            }
+        }
+        
+        async function generateAndPostProduct(product, tab, markPosted = true) {
+            const tagId = tab === 'ranking' ? 'tag-ranking' : 'tag-search';
+            const tag = document.getElementById(tagId).value.trim();
+            
+            if (!tag) {
+                showError(tab, 'アソシエイトタグを入力してください');
+                return;
+            }
+            
+            try {
+                const affiliateLink = createAffiliateLink(product.url, tag);
+                const postText = createPostText(product, affiliateLink, 'deal');
+                
+                const tweetUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(postText);
+                window.open(tweetUrl, '_blank', 'width=550,height=420');
+                
+                if (markPosted) {
+                    markAsPosted(product.asin, tab);
+                }
+                
+            } catch (error) {
+                showError(tab, '投稿文の生成に失敗しました: ' + error.message);
+                throw error;
+            }
+        }
+        
+        async function generateFromUrl() {
+            const url = document.getElementById('amazonUrl').value.trim();
+            const tag = document.getElementById('tag').value.trim();
+            const template = document.getElementById('template').value;
+            
+            if (!url) {
+                showError('manual', 'Amazon商品URLを入力してください');
+                return;
+            }
+            
+            if (!url.includes('amazon.co.jp')) {
+                showError('manual', 'Amazon.co.jpのURLを入力してください');
+                return;
+            }
+            
+            if (!tag) {
+                showError('manual', 'アソシエイトタグを入力してください');
+                return;
+            }
+            
+            localStorage.setItem('amazonTag', tag);
+            
+            hideError('manual');
+            document.getElementById('result-manual').classList.remove('show');
+            document.getElementById('actions-manual').style.display = 'none';
+            document.getElementById('generateBtn').disabled = true;
+            document.getElementById('loading-manual').classList.add('show');
+            
+            try {
+                const productInfo = await fetchProductInfo(url);
+                const affiliateLink = createAffiliateLink(url, tag);
+                const postText = createPostText(productInfo, affiliateLink, template);
+                currentPostText.manual = postText;
+                
+                document.getElementById('result-manual').textContent = postText;
+                document.getElementById('result-manual').classList.add('show');
+                document.getElementById('actions-manual').style.display = 'block';
+                
+                updateCharCount(postText, 'manual');
+                
+            } catch (error) {
+                showError('manual', 'エラーが発生しました: ' + error.message);
+            } finally {
+                document.getElementById('generateBtn').disabled = false;
+                document.getElementById('loading-manual').classList.remove('show');
+            }
+        }
+        
+        async function fetchProductInfo(url) {
+            const asin = extractASIN(url);
+            if (!asin) {
+                throw new Error('ASINを抽出できませんでした');
+            }
+            
+            try {
+                const html = await fetchWithProxy(url);
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // 日本語タイトルを確実に取得
+                let title = '';
+                let titleCandidates = [];
+                
+                // 候補1: productTitle
+                const productTitle = doc.querySelector('#productTitle');
+                if (productTitle) {
+                    const text = productTitle.textContent.trim();
+                    if (hasJapanese(text)) {
+                        titleCandidates.push({ text, score: 10 });
+                    } else {
+                        titleCandidates.push({ text, score: 1 });
+                    }
+                }
+                
+                // 候補2: og:title
+                const ogTitle = doc.querySelector('meta[property="og:title"]');
+                if (ogTitle) {
+                    const text = ogTitle.getAttribute('content').trim();
+                    if (hasJapanese(text)) {
+                        titleCandidates.push({ text, score: 9 });
+                    } else {
+                        titleCandidates.push({ text, score: 2 });
+                    }
+                }
+                
+                // 候補3: title タグ
+                const titleTag = doc.querySelector('title');
+                if (titleTag) {
+                    const text = titleTag.textContent.replace(/^Amazon\.co\.jp[：:]\s*/, '').trim();
+                    if (hasJapanese(text)) {
+                        titleCandidates.push({ text, score: 8 });
+                    }
+                }
+                
+                // 候補4: h1.product-title
+                const h1Title = doc.querySelector('h1.product-title, h1[class*="title"]');
+                if (h1Title) {
+                    const text = h1Title.textContent.trim();
+                    if (hasJapanese(text)) {
+                        titleCandidates.push({ text, score: 7 });
+                    }
+                }
+                
+                // スコアが最も高い候補を選択
+                titleCandidates.sort((a, b) => b.score - a.score);
+                
+                if (titleCandidates.length > 0) {
+                    title = titleCandidates[0].text;
+                } else {
+                    title = '商品情報を取得できませんでした';
+                }
+                
+                // Amazon.co.jpのサフィックスを除去
+                title = title.replace(/\s*[:-]\s*Amazon\.co\.jp.*$/i, '').trim();
+                
+                // 価格（日本円表記）
+                let price = '';
+                let priceWhole = doc.querySelector('.a-price .a-price-whole');
+                let priceFraction = doc.querySelector('.a-price .a-price-fraction');
+                
+                if (priceWhole) {
+                    const whole = priceWhole.textContent.replace(/[,\s]/g, '').replace(/\.?$/, '');
+                    const fraction = priceFraction ? priceFraction.textContent.trim() : '';
+                    price = `¥${whole}${fraction}`;
+                }
+                
+                if (!price) {
+                    const offscreenPrices = doc.querySelectorAll('.a-price .a-offscreen');
+                    for (const priceElem of offscreenPrices) {
+                        const text = priceElem.textContent.trim();
+                        if (text.includes('¥') || text.includes('円')) {
+                            price = text.replace(/\s/g, '');
+                            break;
+                        }
+                    }
+                }
+                
+                if (!price) {
+                    const priceBlock = doc.querySelector('#priceblock_ourprice, #priceblock_dealprice, #price_inside_buybox');
+                    if (priceBlock) {
+                        price = priceBlock.textContent.trim().replace(/\s/g, '');
+                    }
+                }
+                
+                if (price) {
+                    price = price.replace(/¥\s+/, '¥');
+                    price = price.replace(/[^\d,¥円]/g, '');
+                    if (price.includes('円') && !price.includes('¥')) {
+                        price = '¥' + price.replace('円', '');
+                    }
+                }
+                
+                if (!price) {
+                    price = '価格は商品ページでご確認ください';
+                }
+                
+                // 割引情報
+                let discount = '';
+                const savingsElem = doc.querySelector('.savingsPercentage, .a-badge-label-inner');
+                if (savingsElem) {
+                    const text = savingsElem.textContent.trim();
+                    const match = text.match(/(\d+)%/);
+                    if (match) {
+                        discount = `${match[1]}%OFF`;
+                    }
+                }
+                
+                // レビュー評価
+                let rating = '';
+                const acrPopover = doc.querySelector('#acrPopover');
+                if (acrPopover) {
+                    const titleAttr = acrPopover.getAttribute('title');
+                    if (titleAttr) {
+                        const match = titleAttr.match(/([\d.]+)\s*(?:つ星|out of 5)/i);
+                        if (match) {
+                            rating = `★${match[1]}`;
+                        }
+                    }
+                }
+                
+                if (!rating) {
+                    const iconAlt = doc.querySelector('.a-icon-star .a-icon-alt, .a-icon-star-small .a-icon-alt');
+                    if (iconAlt) {
+                        const text = iconAlt.textContent.trim();
+                        const match = text.match(/([\d.]+)\s*(?:つ星|out of 5|stars)/i);
+                        if (match) {
+                            rating = `★${match[1]}`;
+                        }
+                    }
+                }
+                
+                let reviewCount = '';
+                const reviewText = doc.querySelector('#acrCustomerReviewText');
+                if (reviewText) {
+                    reviewCount = reviewText.textContent.trim();
+                }
+                
+                console.log('取得した情報:', { title, price, rating, reviewCount, discount });
+                
+                return {
+                    title: title.substring(0, 120),
+                    price,
+                    rating,
+                    reviewCount,
+                    discount,
+                    asin
+                };
+                
+            } catch (error) {
+                console.error('Fetch error:', error);
+                throw error;
+            }
+        }
+        
+        function extractASIN(url) {
+            const match = url.match(/\/dp\/([A-Z0-9]{10})|\/gp\/product\/([A-Z0-9]{10})|\/exec\/obidos\/ASIN\/([A-Z0-9]{10})/);
+            return match ? (match[1] || match[2] || match[3]) : null;
+        }
+        
+        function createAffiliateLink(url, tag) {
+            const asin = extractASIN(url);
+            return `https://www.amazon.co.jp/dp/${asin}?tag=${tag}`;
+        }
+        
+        function createPostText(info, link, template) {
+            const templates = {
+                casual: `🛒 これいいかも！
+
+${info.title}
+
+💰 ${info.price}
+${info.discount ? `🏷️ ${info.discount}` : ''}
+${info.rating ? `⭐ ${info.rating}` : ''}
+
+気になる方はこちら👇
+${link}
+
+#Amazon #おすすめ`,
+
+                formal: `【商品紹介】
+
+${info.title}
+
+価格: ${info.price}
+${info.discount ? `割引: ${info.discount}` : ''}
+${info.rating ? `評価: ${info.rating}` : ''}
+
+詳細はこちら
+${link}`,
+
+                review: `使ってみたいと思った商品📦
+
+「${info.title}」
+
+💴 ${info.price}
+${info.discount ? `🏷️ ${info.discount}` : ''}
+${info.rating && info.reviewCount ? `${info.rating}（${info.reviewCount}）` : info.rating || ''}
+
+商品ページ▶︎ ${link}
+
+#Amazon #レビュー`,
+
+                deal: `🎉 見つけた！
+
+${info.title}
+
+✨ ${info.price} で販売中
+${info.discount ? `🏷️ ${info.discount}` : ''}
+${info.rating ? `⭐ ${info.rating}の高評価` : ''}
+
+今すぐチェック👇
+${link}
+
+#Amazonセール #お買い得`
+            };
+            
+            return templates[template] || templates.casual;
+        }
+        
+        function updateCharCount(text, tab) {
+            const count = text.length;
+            const countDiv = document.getElementById('charCount-' + tab);
+            countDiv.textContent = `文字数: ${count} / 280`;
+            
+            if (count > 280) {
+                countDiv.classList.add('warning');
+            } else {
+                countDiv.classList.remove('warning');
+            }
+        }
+        
+        function postToX(tab) {
+            const postText = currentPostText[tab];
+            if (!postText) {
+                showError(tab, '投稿文が生成されていません');
+                return;
+            }
+            
+            const tweetUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(postText);
+            window.open(tweetUrl, '_blank', 'width=550,height=420');
+        }
+        
+        function copyText(tab) {
+            const postText = currentPostText[tab];
+            if (!postText) {
+                showError(tab, '投稿文が生成されていません');
+                return;
+            }
+            
+            navigator.clipboard.writeText(postText).then(() => {
+                const btn = event.target;
+                const originalText = btn.textContent;
+                btn.style.transition = 'none';
+                btn.textContent = '✅ コピーしました！';
+                btn.style.background = '#10a37f';
+                btn.style.borderColor = '#10a37f';
+                
+                setTimeout(() => {
+                    btn.style.transition = 'all 0.3s';
+                    btn.textContent = originalText;
+                    btn.style.background = '';
+                    btn.style.borderColor = '';
+                }, 2000);
+            }).catch(err => {
+                showError(tab, 'コピーに失敗しました');
+            });
+        }
+        
+        function showError(tab, message) {
+            const errorDiv = document.getElementById('error-' + tab);
+            errorDiv.textContent = '⚠️ ' + message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 8000);
+        }
+        
+        function hideError(tab) {
+            const errorDiv = document.getElementById('error-' + tab);
+            errorDiv.classList.remove('show');
+        }
+        
+        function showSuccess(tab, message) {
+            const successDiv = document.getElementById('success-' + tab);
+            successDiv.textContent = '✅ ' + message;
+            successDiv.classList.add('show');
+            setTimeout(() => {
+                successDiv.classList.remove('show');
+            }, 5000);
+        }
+        
+        function hideSuccess(tab) {
+            const successDiv = document.getElementById('success-' + tab);
+            successDiv.classList.remove('show');
+        }
+        
+        document.getElementById('amazonUrl')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                generateFromUrl();
+            }
+        });
+        
+        document.getElementById('searchQuery')?.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                searchProducts();
+            }
+        });
+    </script>
+</body>
+</html>
