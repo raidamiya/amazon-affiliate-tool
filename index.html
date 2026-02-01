@@ -723,7 +723,9 @@
                 • 価格なしでも投稿できる<br>
                 • たくさんの商品を見たい<br><br>
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
-                カテゴリ・セール情報に応じて自動追加
+                カテゴリ・セール情報に応じて自動追加<br><br>
+                <strong>📱 複数SNS対応：</strong><br>
+                X / Threads / Pinterest / LINE
             </div>
         </div>
         
@@ -785,7 +787,9 @@
                 • すぐに結果が欲しい → 🔍 高速検索<br>
                 • 価格なしでもOK → 🔍 高速検索<br><br>
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
-                カテゴリ・セール情報に応じて自動追加
+                カテゴリ・セール情報に応じて自動追加<br><br>
+                <strong>📱 複数SNS対応：</strong><br>
+                X / Threads / Pinterest / LINE
             </div>
         </div>
         
@@ -874,7 +878,9 @@
                 3. 個別または順番に投稿！<br><br>
                 <strong>⚡ 改善：</strong>ランキングページから直接取得するため高速化！<br><br>
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
-                カテゴリ・セール情報に応じて自動追加
+                カテゴリ・セール情報に応じて自動追加<br><br>
+                <strong>📱 複数SNS対応：</strong><br>
+                X / Threads / Pinterest / LINE
             </div>
         </div>
     </div>
@@ -884,12 +890,31 @@
         <div class="modal-content">
             <h3 id="modal-title">投稿の準備ができました</h3>
             <p id="modal-message">投稿画面を開きます</p>
+            
+            <div style="margin: 15px 0;">
+                <label style="font-size: 13px; color: #666; margin-bottom: 5px; display: block;">📱 投稿先SNS:</label>
+                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
+                    <button class="btn btn-small sns-select-btn" data-sns="twitter" onclick="selectSNS('twitter')" style="background: #1d9bf0;">
+                        🐦 X
+                    </button>
+                    <button class="btn btn-small sns-select-btn" data-sns="threads" onclick="selectSNS('threads')" style="background: #fff; color: #000; border: 2px solid #000;">
+                        📷 Threads
+                    </button>
+                    <button class="btn btn-small sns-select-btn" data-sns="pinterest" onclick="selectSNS('pinterest')" style="background: #E60023;">
+                        📌 Pinterest
+                    </button>
+                    <button class="btn btn-small sns-select-btn" data-sns="line" onclick="selectSNS('line')" style="background: #00B900;">
+                        💬 LINE
+                    </button>
+                </div>
+            </div>
+            
             <div class="modal-buttons button-group">
                 <button class="btn btn-success" onclick="postCurrentProduct()">
-                    🐦 投稿画面を開く
+                    <span id="post-sns-label">🐦</span> 投稿して次へ
                 </button>
-                <button class="btn btn-primary" onclick="nextProduct()">
-                    ➡️ 次へ
+                <button class="btn btn-warning" onclick="skipCurrentProduct()">
+                    ⏭️ スキップ
                 </button>
                 <button class="btn btn-outline" onclick="cancelBulkPost()">
                     ❌ 中止
@@ -926,7 +951,8 @@
             active: false,
             tab: '',
             currentIndex: 0,
-            products: []
+            products: [],
+            sns: 'twitter'  // デフォルトはX
         };
         
         const categoryUrls = {
@@ -1637,12 +1663,18 @@
                         <div class="product-title">${product.title}</div>
                         ${product.price ? `<div class="product-price">${product.price}</div>` : '<div class="product-price" style="color: #666;">価格未取得</div>'}
                         ${product.rating ? `<div class="product-rating">${product.rating}</div>` : ''}
-                        <div class="product-actions">
-                            <button class="btn btn-small btn-success" onclick="window.open('${product.url}', '_blank')" style="flex: 1;">
-                                👁️ 価格確認
+                        <div class="product-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
+                            <button class="btn btn-small btn-success" onclick="window.open('${product.url}', '_blank')">
+                                👁️ 確認
                             </button>
-                            <button class="btn btn-small" onclick='generateAndPostProduct(${JSON.stringify(product).replace(/'/g, "&apos;")}, "${tab}")' style="flex: 1;">
-                                ✨ 投稿
+                            <button class="btn btn-small" onclick='generateAndPostProduct(${JSON.stringify(product).replace(/'/g, "&apos;")}, "${tab}", true, "twitter")' style="background: #1d9bf0;">
+                                🐦 X
+                            </button>
+                            <button class="btn btn-small" onclick='generateAndPostProduct(${JSON.stringify(product).replace(/'/g, "&apos;")}, "${tab}", true, "threads")' style="background: #000;">
+                                📷 Threads
+                            </button>
+                            <button class="btn btn-small" onclick='generateAndPostProduct(${JSON.stringify(product).replace(/'/g, "&apos;")}, "${tab}", true, "pinterest")' style="background: #E60023;">
+                                📌 Pinterest
                             </button>
                         </div>
                     </div>
@@ -1684,7 +1716,8 @@
                 active: true,
                 tab: tab,
                 currentIndex: 0,
-                products: products
+                products: products,
+                sns: 'twitter'  // デフォルトはX
             };
             
             showBulkModal();
@@ -1701,14 +1734,55 @@
             
             document.getElementById('modal-title').textContent = `商品 ${bulkPostState.currentIndex + 1} / ${bulkPostState.products.length}`;
             document.getElementById('modal-message').textContent = `${product.title.substring(0, 60)}...\n\n残り ${remaining} 件`;
+            
+            // デフォルトSNS選択を反映
+            selectSNS(bulkPostState.sns || 'twitter');
+            
             document.getElementById('bulk-modal').classList.add('show');
+        }
+        
+        function selectSNS(sns) {
+            bulkPostState.sns = sns;
+            
+            // ボタンのスタイルを更新
+            document.querySelectorAll('.sns-select-btn').forEach(btn => {
+                if (btn.dataset.sns === sns) {
+                    btn.style.opacity = '1';
+                    btn.style.transform = 'scale(1.05)';
+                    btn.style.boxShadow = '0 0 0 3px rgba(29, 155, 240, 0.3)';
+                } else {
+                    btn.style.opacity = '0.6';
+                    btn.style.transform = 'scale(1)';
+                    btn.style.boxShadow = 'none';
+                }
+            });
+            
+            // ラベルを更新
+            const labels = {
+                'twitter': '🐦',
+                'threads': '📷',
+                'pinterest': '📌',
+                'line': '💬'
+            };
+            document.getElementById('post-sns-label').textContent = labels[sns] || '🐦';
         }
         
         function postCurrentProduct() {
             const product = bulkPostState.products[bulkPostState.currentIndex];
             const tab = bulkPostState.tab;
+            const sns = bulkPostState.sns || 'twitter';
             
-            generateAndPostProduct(product, tab, false);
+            generateAndPostProduct(product, tab, false, sns);
+            
+            // 投稿後、自動で次の商品に移動
+            setTimeout(() => {
+                nextProduct();
+            }, 500);
+        }
+        
+        function skipCurrentProduct() {
+            // 投稿せずにスキップ
+            nextProduct();
         }
         
         function nextProduct() {
@@ -1782,10 +1856,10 @@
             }
         }
         
-        async function generateAndPostProduct(product, tab, markPosted = true) {
-            const tagId = tab === 'ranking' ? 'tag-ranking' : 'tag-search';
+        async function generateAndPostProduct(product, tab, markPosted = true, sns = 'twitter') {
+            const tagId = tab === 'ranking' ? 'tag-ranking' : tab === 'detailed' ? 'tag-detailed' : 'tag-search';
             const tag = document.getElementById(tagId).value.trim();
-            const useShortUrlId = tab === 'ranking' ? 'useShortUrl-ranking' : 'useShortUrl-search';
+            const useShortUrlId = tab === 'ranking' ? 'useShortUrl-ranking' : tab === 'detailed' ? 'useShortUrl-detailed' : 'useShortUrl-search';
             const useShortUrl = document.getElementById(useShortUrlId).checked;
             
             if (!tag) {
@@ -1801,9 +1875,23 @@
                 }
                 
                 const postText = createSimplePostText(product, affiliateLink);
+                let postUrl = '';
                 
-                const tweetUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(postText);
-                window.open(tweetUrl, '_blank', 'width=550,height=420');
+                // SNS別のURL生成
+                if (sns === 'twitter') {
+                    postUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(postText);
+                } else if (sns === 'threads') {
+                    postUrl = 'https://www.threads.net/intent/post?text=' + encodeURIComponent(postText);
+                } else if (sns === 'pinterest') {
+                    const description = createSimplePostText(product, '').trim();
+                    postUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(affiliateLink)}&description=${encodeURIComponent(description)}&media=${encodeURIComponent(product.imageUrl)}`;
+                } else if (sns === 'facebook') {
+                    postUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(affiliateLink)}&quote=${encodeURIComponent(postText)}`;
+                } else if (sns === 'line') {
+                    postUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(affiliateLink)}&text=${encodeURIComponent(postText)}`;
+                }
+                
+                window.open(postUrl, '_blank', 'width=550,height=420');
                 
                 if (markPosted) {
                     markAsPosted(product.asin, tab);
@@ -1958,6 +2046,9 @@
             
             // カテゴリキーワードマッピング
             const categories = {
+                '贈答': ['ギフト', 'プレゼント', '贈答', '贈り物', 'お祝い', '誕生日', 'ギフトbox', 
+                        '木箱', 'お歳暮', 'お中元', '母の日', '父の日', 'バレンタイン', 'ホワイトデー',
+                        'クリスマス', '内祝い', '結婚祝い', '出産祝い', '感謝'],
                 '家電': ['テレビ', 'tv', 'カメラ', 'パソコン', 'pc', 'スマホ', 'タブレット', 'イヤホン', 'ヘッドホン', 
                         'キーボード', 'マウス', 'モニター', 'プリンター', 'スピーカー', '充電', 'バッテリー', 
                         'switchbot', 'anker', 'エアダスター', 'ケルヒャー'],
@@ -2005,7 +2096,10 @@
             
             // カテゴリ別タグ
             const category = detectCategory(info.title);
-            if (category === '家電') {
+            if (category === '贈答') {
+                tags.push('#ギフト');
+                tags.push('#プレゼント');
+            } else if (category === '家電') {
                 tags.push('#家電');
                 tags.push('#ガジェット');
             } else if (category === '本') {
