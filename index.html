@@ -1154,27 +1154,50 @@
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             
-            // より多くのセレクタを試す
+            // デバッグ：HTMLの一部を確認
+            console.log('取得したHTML長:', html.length);
+            console.log('title:', doc.title);
+            
+            // より多くのセレクタを試す（優先順位順）
             const selectors = [
+                // 新しいUI
+                'div[data-asin][data-index]',
+                'li[data-asin]',
                 '.zg-grid-general-faceout',
                 '.p13n-sc-uncoverable-faceout',
-                '[data-asin]',
                 '.zg-item-immersion',
-                'div[data-asin]',
-                '.a-carousel-card'
+                '.a-carousel-card',
+                // 汎用
+                'div[data-asin]:not([data-asin=""])',
+                '[id*="item_"]',
+                '.s-result-item[data-asin]'
             ];
             
             let items = [];
+            let usedSelector = '';
+            
             for (const selector of selectors) {
                 const found = doc.querySelectorAll(selector);
+                console.log(`セレクタ "${selector}": ${found.length}件`);
                 if (found.length > 0) {
-                    items = found;
-                    break;
+                    // ASINを持つものだけをフィルター
+                    const validItems = Array.from(found).filter(item => {
+                        const asin = item.getAttribute('data-asin');
+                        return asin && asin !== '' && asin.length === 10;
+                    });
+                    
+                    if (validItems.length > 0) {
+                        items = validItems;
+                        usedSelector = selector;
+                        console.log(`✅ 有効なセレクタ: "${selector}" (${validItems.length}件)`);
+                        break;
+                    }
                 }
             }
             
             if (items.length === 0) {
-                throw new Error('商品を取得できませんでした');
+                console.error('取得したHTMLの一部:', html.substring(0, 1000));
+                throw new Error('商品を取得できませんでした。別のカテゴリをお試しください。');
             }
             
             const products = [];
@@ -1182,78 +1205,79 @@
             for (let i = 0; i < Math.min(items.length, 10); i++) {
                 const item = items[i];
                 
-                const asin = item.getAttribute('data-asin') || 
-                            item.querySelector('[data-asin]')?.getAttribute('data-asin');
+                const asin = item.getAttribute('data-asin');
+                if (!asin || asin === '' || asin.length !== 10) continue;
                 
-                if (!asin || asin === '') continue;
+                console.log(`\n商品 ${i + 1}: ${asin}`);
                 
                 const productUrl = `https://www.amazon.co.jp/dp/${asin}`;
                 
                 // 画像
+                let imageUrl = '';
                 const imgElem = item.querySelector('img');
-                const imageUrl = imgElem ? imgElem.src : '';
+                if (imgElem) {
+                    imageUrl = imgElem.src || imgElem.getAttribute('data-src') || '';
+                }
                 
-                // タイトル
+                // タイトル - より多くのセレクタを試す
                 let title = '';
                 const titleSelectors = [
                     '.p13n-sc-truncate',
                     '._cDEzb_p13n-sc-css-line-clamp-3_g3dy1',
+                    '.a-link-normal[href*="/dp/"]',
                     '.a-link-normal',
-                    '[class*="truncate"]',
                     'h2',
-                    'h3'
+                    'h3',
+                    '[class*="title"]',
+                    'a[href*="/dp/"]'
                 ];
                 
                 for (const sel of titleSelectors) {
                     const elem = item.querySelector(sel);
-                    if (elem && elem.textContent.trim().length > 5) {
-                        title = elem.textContent.trim();
-                        break;
+                    if (elem) {
+                        const text = elem.textContent.trim();
+                        if (text.length > 5 && hasJapanese(text)) {
+                            title = text;
+                            console.log(`  タイトル取得成功: ${sel}`);
+                            break;
+                        }
+                    }
+                }
+                
+                // タイトルが取れない場合は画像のaltから
+                if (!title && imgElem && imgElem.alt) {
+                    const text = imgElem.alt.trim();
+                    if (text.length > 5 && hasJapanese(text)) {
+                        title = text;
+                        console.log('  タイトル取得: img alt');
                     }
                 }
                 
                 // 価格（参考情報）
                 let price = '';
                 
-                // 方法1: a-price内を探索
-                const allPrices = item.querySelectorAll('.a-price');
-                for (const priceBlock of allPrices) {
-                    const offscreen = priceBlock.querySelector('.a-offscreen');
-                    if (offscreen) {
-                        const text = offscreen.textContent.trim();
-                        const match = text.match(/[\d,]+/);
-                        if (match) {
-                            const numValue = parseInt(match[0].replace(/,/g, ''));
-                            if (numValue >= 100 && numValue < 10000000) {
-                                price = numValue + '円';
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!price) {
-                        const whole = priceBlock.querySelector('.a-price-whole');
-                        if (whole) {
-                            const text = whole.textContent.replace(/[,.\s]/g, '');
-                            const numValue = parseInt(text);
-                            if (numValue >= 100 && numValue < 10000000) {
-                                price = numValue + '円';
-                                break;
-                            }
-                        }
-                    }
-                }
+                // より多くの価格セレクタ
+                const priceSelectors = [
+                    '.a-price .a-offscreen',
+                    '.a-price-whole',
+                    '._cDEzb_p13n-sc-price_3mJ9Z',
+                    '.p13n-sc-price',
+                    '[class*="price"]',
+                    'span.a-price',
+                    '.a-color-price'
+                ];
                 
-                // 方法2: 新UIの価格クラス
-                if (!price) {
-                    const newPriceElem = item.querySelector('._cDEzb_p13n-sc-price_3mJ9Z, .p13n-sc-price, [class*="sc-price"]');
-                    if (newPriceElem) {
-                        const text = newPriceElem.textContent.trim();
+                for (const sel of priceSelectors) {
+                    const elem = item.querySelector(sel);
+                    if (elem) {
+                        const text = elem.textContent.trim();
                         const match = text.match(/[\d,]+/);
                         if (match) {
                             const numValue = parseInt(match[0].replace(/,/g, ''));
                             if (numValue >= 100 && numValue < 10000000) {
                                 price = numValue + '円';
+                                console.log(`  価格取得成功: ${sel} - ${price}`);
+                                break;
                             }
                         }
                     }
@@ -1261,29 +1285,46 @@
                 
                 // 評価
                 let rating = '';
-                const ratingElem = item.querySelector('.a-icon-star-small .a-icon-alt, .a-icon-star .a-icon-alt');
-                if (ratingElem) {
-                    const text = ratingElem.textContent.trim();
-                    const match = text.match(/([\d.]+)/);
-                    if (match) {
-                        rating = `★${match[1]}`;
+                const ratingSelectors = [
+                    '.a-icon-star-small .a-icon-alt',
+                    '.a-icon-star .a-icon-alt',
+                    '[class*="rating"]',
+                    'i.a-icon-star'
+                ];
+                
+                for (const sel of ratingSelectors) {
+                    const elem = item.querySelector(sel);
+                    if (elem) {
+                        const text = elem.textContent || elem.getAttribute('title') || '';
+                        const match = text.match(/([\d.]+)/);
+                        if (match) {
+                            rating = `★${match[1]}`;
+                            break;
+                        }
                     }
                 }
                 
-                products.push({
-                    rank: products.length + 1,
-                    asin,
-                    url: productUrl,
-                    imageUrl,
-                    title: title,
-                    price: price || '', // 空文字でもOK
-                    rating: rating,
-                    discount: ''
-                });
+                if (title) {
+                    products.push({
+                        rank: products.length + 1,
+                        asin,
+                        url: productUrl,
+                        imageUrl,
+                        title: title,
+                        price: price || '',
+                        rating: rating,
+                        discount: ''
+                    });
+                    console.log(`  ✅ 追加成功`);
+                } else {
+                    console.log(`  ❌ タイトルなし - スキップ`);
+                }
             }
             
+            console.log(`\n合計 ${products.length}件の商品を取得`);
+            
             if (products.length === 0) {
-                throw new Error('商品を取得できませんでした');
+                throw new Error('有効な商品を取得できませんでした。別のカテゴリをお試しください。');
             }
             
             return products;
