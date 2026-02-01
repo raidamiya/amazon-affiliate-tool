@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X アフィリエイト投稿ジェネレーター（デバッグ版）</title>
+    <title>X アフィリエイト投稿ツール（Workers版）</title>
     <style>
         * {
             margin: 0;
@@ -587,8 +587,8 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🐦 X アフィリエイト投稿ツール <span style="background: #ff5722; padding: 3px 8px; border-radius: 4px; font-size: 12px;">🔍 デバッグ版</span></h1>
-            <p>Amazonから簡単投稿（コンソールでデバッグ情報を確認できます）</p>
+            <h1>🐦 X アフィリエイト投稿ツール <span style="background: #10a37f; padding: 3px 8px; border-radius: 4px; font-size: 12px;">⚡ Workers版</span></h1>
+            <p>高精度な価格取得 - Cloudflare Workers経由</p>
         </div>
         
         <div class="tabs">
@@ -941,6 +941,9 @@
             'https://api.codetabs.com/v1/proxy?quest=',
             'https://api.allorigins.win/raw?url='
         ];
+        
+        // Cloudflare Workers スクレイピングプロキシ
+        const WORKER_URL = 'https://amazon-scraping-proxy.carpe-diem-miya.workers.dev';
         
         let currentProxyIndex = 0;
         
@@ -1579,7 +1582,22 @@
             let failCount = 0;
             let noPriceCount = 0;
             
+            // 詳細検索の場合、既存の商品IDを取得
+            const existingAsins = new Set();
+            if (tab === 'detailed') {
+                const existingProducts = listDiv.querySelectorAll('.product-item');
+                existingProducts.forEach(elem => {
+                    const asin = elem.id.replace(`product-${tab}-`, '');
+                    existingAsins.add(asin);
+                });
+            }
+            
             for (const product of products) {
+                // 詳細検索モードで既に表示されている商品はスキップ
+                if (tab === 'detailed' && existingAsins.has(product.asin)) {
+                    continue;
+                }
+                
                 // タイトルのみ必須
                 const isValidTitle = product.title && hasJapanese(product.title) && product.title.length > 5;
                 
@@ -1854,181 +1872,41 @@
             }
             
             try {
-                const html = await fetchWithProxy(url);
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, 'text/html');
-                
-                // タイトル取得
-                let title = '';
-                
-                const productTitle = doc.querySelector('#productTitle');
-                if (productTitle) {
-                    const text = productTitle.textContent.trim();
-                    if (hasJapanese(text) && text.length > 5) {
-                        title = text;
-                    }
-                }
-                
-                if (!title) {
-                    const ogTitle = doc.querySelector('meta[property="og:title"]');
-                    if (ogTitle) {
-                        const text = ogTitle.getAttribute('content').trim();
-                        if (hasJapanese(text) && text.length > 5) {
-                            title = text;
-                        }
-                    }
-                }
-                
-                title = title.replace(/\s*[:-]\s*Amazon\.co\.jp.*$/i, '').trim();
-                
-                // 価格取得 - デバッグ強化版
-                let price = '';
-                let priceValue = 0;
-                
-                console.log('=== 価格取得デバッグ ===');
+                console.log('=== Workers版 商品情報取得 ===');
                 console.log('URL:', url);
                 console.log('ASIN:', asin);
-                console.log('タイトル:', title.substring(0, 50));
                 
-                // 方法1: すべての.a-priceブロックを検索
-                const allPriceBlocks = doc.querySelectorAll('.a-price');
-                console.log(`発見した.a-priceブロック数: ${allPriceBlocks.length}`);
+                // Cloudflare Workersで商品情報を取得
+                const response = await fetch(WORKER_URL, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({ url: url })
+                });
                 
-                for (let i = 0; i < Math.min(allPriceBlocks.length, 5); i++) {
-                    const block = allPriceBlocks[i];
-                    console.log(`\n価格ブロック ${i + 1}:`);
-                    console.log('  HTML:', block.innerHTML.substring(0, 150));
-                    
-                    const offscreen = block.querySelector('.a-offscreen');
-                    if (offscreen) {
-                        const text = offscreen.textContent.trim();
-                        console.log('  a-offscreen:', text);
-                        const match = text.match(/[\d,]+/);
-                        if (match) {
-                            const numValue = parseInt(match[0].replace(/,/g, ''));
-                            console.log('  変換後:', numValue);
-                            if (numValue >= 100 && numValue < 10000000) {
-                                price = numValue + '円';
-                                priceValue = numValue;
-                                console.log('  ✅ 価格確定:', price);
-                                break;
-                            }
-                        }
-                    }
-                    
-                    if (!price) {
-                        const whole = block.querySelector('.a-price-whole');
-                        if (whole) {
-                            const text = whole.textContent.replace(/[,.\s]/g, '');
-                            console.log('  a-price-whole:', text);
-                            const numValue = parseInt(text);
-                            if (numValue >= 100 && numValue < 10000000) {
-                                price = numValue + '円';
-                                priceValue = numValue;
-                                console.log('  ✅ 価格確定:', price);
-                                break;
-                            }
-                        }
-                    }
+                if (!response.ok) {
+                    throw new Error(`Worker error: ${response.status}`);
                 }
                 
-                // 方法2: 個別のIDセレクタ
-                if (!price) {
-                    console.log('\n方法2: 個別IDセレクタ');
-                    const priceIds = [
-                        '#priceblock_ourprice',
-                        '#priceblock_dealprice',
-                        '#price_inside_buybox',
-                        '#corePrice_feature_div .a-price-whole',
-                        '#corePriceDisplay_desktop_feature_div .a-price-whole'
-                    ];
-                    
-                    for (const selector of priceIds) {
-                        const elem = doc.querySelector(selector);
-                        if (elem) {
-                            console.log(`  ${selector}:`, elem.textContent.substring(0, 50));
-                            const text = elem.textContent.replace(/[,.\s￥¥]/g, '');
-                            const match = text.match(/\d+/);
-                            if (match) {
-                                const numValue = parseInt(match[0]);
-                                if (numValue >= 100 && numValue < 10000000) {
-                                    price = numValue + '円';
-                                    priceValue = numValue;
-                                    console.log('  ✅ 価格確定:', price);
-                                    break;
-                                }
-                            }
-                        } else {
-                            console.log(`  ${selector}: なし`);
-                        }
-                    }
-                }
+                const data = await response.json();
                 
-                // 方法3: span要素内の価格パターンを探す
-                if (!price) {
-                    console.log('\n方法3: spanパターン検索');
-                    const allSpans = doc.querySelectorAll('span');
-                    let foundCount = 0;
-                    for (const span of allSpans) {
-                        const text = span.textContent.trim();
-                        const match = text.match(/^[￥¥]\s*([\d,]+)$/);
-                        if (match) {
-                            foundCount++;
-                            if (foundCount <= 3) {
-                                console.log(`  候補 ${foundCount}: "${text}"`);
-                            }
-                            const numValue = parseInt(match[1].replace(/,/g, ''));
-                            if (numValue >= 100 && numValue < 10000000) {
-                                price = numValue + '円';
-                                priceValue = numValue;
-                                console.log(`  ✅ 価格確定: ${price}`);
-                                break;
-                            }
-                        }
-                    }
-                    console.log(`  価格候補総数: ${foundCount}`);
-                }
-                
-                console.log('\n最終価格:', price || '取得失敗');
-                
-                if (!price || priceValue < 100) {
-                    price = ''; // 空文字にして投稿可能に
-                }
-                
-                // 割引情報
-                let discount = '';
-                const savingsElem = doc.querySelector('.savingsPercentage, .a-badge-label-inner');
-                if (savingsElem) {
-                    const text = savingsElem.textContent.trim();
-                    const match = text.match(/(\d+)%/);
-                    if (match) {
-                        discount = `${match[1]}%OFF`;
-                    }
-                }
-                
-                // レビュー評価
-                let rating = '';
-                const acrPopover = doc.querySelector('#acrPopover');
-                if (acrPopover) {
-                    const titleAttr = acrPopover.getAttribute('title');
-                    if (titleAttr) {
-                        const match = titleAttr.match(/([\d.]+)\s*(?:つ星|out of 5)/i);
-                        if (match) {
-                            rating = `★${match[1]}`;
-                        }
-                    }
-                }
+                console.log('Worker レスポンス:', data);
+                console.log('タイトル:', data.title);
+                console.log('価格:', data.price || '取得失敗');
+                console.log('評価:', data.rating || 'なし');
+                console.log('割引:', data.discount || 'なし');
                 
                 return {
-                    title: title.substring(0, 120),
-                    price,
-                    rating,
-                    discount,
-                    asin
+                    title: data.title ? data.title.substring(0, 120) : '',
+                    price: data.price || '',
+                    rating: data.rating || '',
+                    discount: data.discount || '',
+                    asin: data.asin || asin
                 };
                 
             } catch (error) {
-                console.error('Fetch error:', error);
+                console.error('Worker fetch error:', error);
                 throw error;
             }
         }
