@@ -725,7 +725,7 @@
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
                 カテゴリ・セール情報に応じて自動追加<br><br>
                 <strong>📱 複数SNS対応：</strong><br>
-                X / Threads / Pinterest / LINE
+                X / Threads
             </div>
         </div>
         
@@ -789,7 +789,7 @@
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
                 カテゴリ・セール情報に応じて自動追加<br><br>
                 <strong>📱 複数SNS対応：</strong><br>
-                X / Threads / Pinterest / LINE
+                X / Threads
             </div>
         </div>
         
@@ -880,7 +880,7 @@
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
                 カテゴリ・セール情報に応じて自動追加<br><br>
                 <strong>📱 複数SNS対応：</strong><br>
-                X / Threads / Pinterest / LINE
+                X / Threads
             </div>
         </div>
     </div>
@@ -893,18 +893,12 @@
             
             <div style="margin: 15px 0;">
                 <label style="font-size: 13px; color: #666; margin-bottom: 5px; display: block;">📱 投稿先SNS:</label>
-                <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 15px;">
-                    <button class="btn btn-small sns-select-btn" data-sns="twitter" onclick="selectSNS('twitter')" style="background: #1d9bf0;">
+                <div style="display: flex; gap: 8px; margin-bottom: 15px;">
+                    <button class="btn btn-small sns-select-btn" data-sns="twitter" onclick="selectSNS('twitter')" style="flex: 1; background: #1d9bf0;">
                         🐦 X
                     </button>
-                    <button class="btn btn-small sns-select-btn" data-sns="threads" onclick="selectSNS('threads')" style="background: #fff; color: #000; border: 2px solid #000;">
+                    <button class="btn btn-small sns-select-btn" data-sns="threads" onclick="selectSNS('threads')" style="flex: 1; background: #fff; color: #000; border: 2px solid #000;">
                         📷 Threads
-                    </button>
-                    <button class="btn btn-small sns-select-btn" data-sns="pinterest" onclick="selectSNS('pinterest')" style="background: #E60023;">
-                        📌 Pinterest
-                    </button>
-                    <button class="btn btn-small sns-select-btn" data-sns="line" onclick="selectSNS('line')" style="background: #00B900;">
-                        💬 LINE
                     </button>
                 </div>
             </div>
@@ -1663,18 +1657,15 @@
                         <div class="product-title">${product.title}</div>
                         ${product.price ? `<div class="product-price">${product.price}</div>` : '<div class="product-price" style="color: #666;">価格未取得</div>'}
                         ${product.rating ? `<div class="product-rating">${product.rating}</div>` : ''}
-                        <div class="product-actions" style="display: grid; grid-template-columns: 1fr 1fr; gap: 5px;">
-                            <button class="btn btn-small btn-success" onclick="window.open('${product.url}', '_blank')">
+                        <div class="product-actions" style="display: flex; gap: 5px;">
+                            <button class="btn btn-small btn-success" onclick="window.open('${product.url}', '_blank')" style="flex: 1;">
                                 👁️ 確認
                             </button>
-                            <button class="btn btn-small" onclick='generateAndPostProduct(${JSON.stringify(product).replace(/'/g, "&apos;")}, "${tab}", true, "twitter")' style="background: #1d9bf0;">
+                            <button class="btn btn-small" onclick='generateAndPostProduct(${JSON.stringify(product).replace(/'/g, "&apos;")}, "${tab}", true, "twitter")' style="flex: 1; background: #1d9bf0;">
                                 🐦 X
                             </button>
-                            <button class="btn btn-small" onclick='generateAndPostProduct(${JSON.stringify(product).replace(/'/g, "&apos;")}, "${tab}", true, "threads")' style="background: #000;">
+                            <button class="btn btn-small" onclick='generateAndPostProduct(${JSON.stringify(product).replace(/'/g, "&apos;")}, "${tab}", true, "threads")' style="flex: 1; background: #000;">
                                 📷 Threads
-                            </button>
-                            <button class="btn btn-small" onclick='generateAndPostProduct(${JSON.stringify(product).replace(/'/g, "&apos;")}, "${tab}", true, "pinterest")' style="background: #E60023;">
-                                📌 Pinterest
                             </button>
                         </div>
                     </div>
@@ -1760,9 +1751,7 @@
             // ラベルを更新
             const labels = {
                 'twitter': '🐦',
-                'threads': '📷',
-                'pinterest': '📌',
-                'line': '💬'
+                'threads': '📷'
             };
             document.getElementById('post-sns-label').textContent = labels[sns] || '🐦';
         }
@@ -1874,7 +1863,7 @@
                     affiliateLink = await shortenUrl(affiliateLink);
                 }
                 
-                const postText = createSimplePostText(product, affiliateLink);
+                const postText = createSimplePostText(product, affiliateLink, sns);
                 let postUrl = '';
                 
                 // SNS別のURL生成
@@ -1883,7 +1872,7 @@
                 } else if (sns === 'threads') {
                     postUrl = 'https://www.threads.net/intent/post?text=' + encodeURIComponent(postText);
                 } else if (sns === 'pinterest') {
-                    const description = createSimplePostText(product, '').trim();
+                    const description = createSimplePostText(product, '', sns).trim();
                     postUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(affiliateLink)}&description=${encodeURIComponent(description)}&media=${encodeURIComponent(product.imageUrl)}`;
                 } else if (sns === 'facebook') {
                     postUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(affiliateLink)}&quote=${encodeURIComponent(postText)}`;
@@ -2022,7 +2011,7 @@
             return `https://www.amazon.co.jp/dp/${asin}?tag=${tag}`;
         }
         
-        function createSimplePostText(info, link) {
+        function createSimplePostText(info, link, sns = 'twitter') {
             const parts = [];
             if (info.price) {
                 parts.push(`PR Amazonで${info.title}が${info.price}で販売中。`);
@@ -2031,14 +2020,37 @@
             }
             parts.push(link);
             
-            // ハッシュタグを追加
-            const hashtags = generateHashtags(info);
+            // SNS別のハッシュタグ戦略
+            let hashtags = '';
+            if (sns === 'twitter') {
+                // X: フルハッシュタグ
+                hashtags = generateHashtags(info);
+            } else if (sns === 'threads') {
+                // Threads: 最小限のハッシュタグ（#Amazon #PR のみ）
+                hashtags = generateHashtagsForThreads(info);
+            } else {
+                // その他: デフォルト
+                hashtags = generateHashtags(info);
+            }
+            
             if (hashtags) {
                 parts.push('');  // 空行
                 parts.push(hashtags);
             }
             
             return parts.join('\n');
+        }
+        
+        function generateHashtagsForThreads(info) {
+            // Threads用: 最小限のタグ
+            const tags = ['#Amazon', '#PR'];
+            
+            // 割引がある場合のみセールタグ追加
+            if (info.discount) {
+                tags.push('#セール');
+            }
+            
+            return tags.join(' ');
         }
         
         function detectCategory(title) {
@@ -2052,7 +2064,7 @@
                 '家電': ['テレビ', 'tv', 'カメラ', 'パソコン', 'pc', 'スマホ', 'タブレット', 'イヤホン', 'ヘッドホン', 
                         'キーボード', 'マウス', 'モニター', 'プリンター', 'スピーカー', '充電', 'バッテリー', 
                         'switchbot', 'anker', 'エアダスター', 'ケルヒャー'],
-                '本': ['本', '書籍', 'book', 'kindle', 'コミック', '漫画', 'マンガ', '小説', '雑誌'],
+                '本': ['書籍', 'book', 'kindle', 'コミック', '漫画', 'マンガ', '小説', '雑誌', '文庫', '単行本', '新刊'],
                 '食品': ['食品', '飲料', 'ドリンク', 'お菓子', 'スナック', 'チョコ', 'コーヒー', '紅茶', 
                         'お茶', '水', 'ジュース', 'ワイン', '日本酒', '焼酎', 'ビール', '獺祭', 'だっさい'],
                 '美容': ['化粧品', 'コスメ', '美容', 'スキンケア', 'シャンプー', 'リンス', '香水', 'パック', 
