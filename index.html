@@ -1002,20 +1002,35 @@
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             
-            const products = [];
+            console.log('=== 検索結果ページ解析開始 ===');
+            
             const items = doc.querySelectorAll('[data-component-type="s-search-result"]');
+            console.log(`発見した商品数: ${items.length}`);
+            
+            if (items.length === 0) {
+                console.error('❌ 商品アイテムが見つかりませんでした');
+                throw new Error('商品が見つかりませんでした');
+            }
+            
+            const products = [];
             
             for (let i = 0; i < Math.min(items.length, 10); i++) {
                 const item = items[i];
                 
                 const asin = item.getAttribute('data-asin');
-                if (!asin) continue;
+                if (!asin) {
+                    console.log(`商品 ${i + 1}: ASIN なし - スキップ`);
+                    continue;
+                }
+                
+                console.log(`\n=== 商品 ${i + 1}: ${asin} ===`);
                 
                 const productUrl = `https://www.amazon.co.jp/dp/${asin}`;
                 
                 // 画像
                 const imgElem = item.querySelector('img.s-image');
                 const imageUrl = imgElem ? imgElem.src : '';
+                console.log(`画像: ${imageUrl ? 'あり' : 'なし'}`);
                 
                 // タイトル - 検索結果から直接取得
                 let title = '';
@@ -1023,37 +1038,104 @@
                 if (titleElem) {
                     title = titleElem.textContent.trim();
                 }
+                console.log(`タイトル: ${title || 'なし'}`);
                 
-                // 価格 - 検索結果から直接取得
+                // 価格 - 検索結果から直接取得（デバッグ強化版）
                 let price = '';
                 let priceValue = 0;
                 
-                // 方法1: a-price-whole
-                const priceWhole = item.querySelector('.a-price .a-price-whole');
-                if (priceWhole) {
-                    const text = priceWhole.textContent.replace(/[,.\s]/g, '');
-                    const numValue = parseInt(text);
-                    if (numValue >= 100 && numValue < 10000000) {
-                        price = numValue + '円';
-                        priceValue = numValue;
-                    }
-                }
+                console.log(`\n=== 商品 ${asin} の価格取得開始 ===`);
                 
-                // 方法2: a-offscreen
-                if (!price) {
-                    const priceOffscreen = item.querySelector('.a-price .a-offscreen');
-                    if (priceOffscreen) {
-                        const text = priceOffscreen.textContent.trim();
+                // 方法1: a-price全体を探す
+                const allPrices = item.querySelectorAll('.a-price');
+                console.log(`発見した.a-priceの数: ${allPrices.length}`);
+                
+                for (let i = 0; i < allPrices.length; i++) {
+                    const priceBlock = allPrices[i];
+                    console.log(`\n価格ブロック ${i + 1}:`);
+                    
+                    // a-offscreen
+                    const offscreen = priceBlock.querySelector('.a-offscreen');
+                    if (offscreen) {
+                        const text = offscreen.textContent.trim();
+                        console.log(`  a-offscreen: "${text}"`);
                         const match = text.match(/[\d,]+/);
                         if (match) {
                             const numValue = parseInt(match[0].replace(/,/g, ''));
+                            console.log(`  変換後: ${numValue}`);
                             if (numValue >= 100 && numValue < 10000000) {
                                 price = numValue + '円';
                                 priceValue = numValue;
+                                console.log(`  ✅ 価格確定: ${price}`);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // a-price-whole
+                    if (!price) {
+                        const whole = priceBlock.querySelector('.a-price-whole');
+                        if (whole) {
+                            const text = whole.textContent.replace(/[,.\s]/g, '');
+                            console.log(`  a-price-whole: "${text}"`);
+                            const numValue = parseInt(text);
+                            if (numValue >= 100 && numValue < 10000000) {
+                                price = numValue + '円';
+                                priceValue = numValue;
+                                console.log(`  ✅ 価格確定: ${price}`);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // 全テキストをログ出力
+                    console.log(`  全テキスト: "${priceBlock.textContent.trim()}"`);
+                }
+                
+                // 方法2: data-a-priceから直接取得を試みる
+                if (!price) {
+                    console.log('\n方法2: data-a-price属性を探索');
+                    const priceData = item.querySelector('[data-a-price]');
+                    if (priceData) {
+                        try {
+                            const priceJson = JSON.parse(priceData.getAttribute('data-a-price'));
+                            console.log('  data-a-price JSON:', priceJson);
+                            if (priceJson.value) {
+                                const numValue = parseFloat(priceJson.value);
+                                if (numValue >= 100 && numValue < 10000000) {
+                                    price = Math.round(numValue) + '円';
+                                    priceValue = Math.round(numValue);
+                                    console.log(`  ✅ 価格確定: ${price}`);
+                                }
+                            }
+                        } catch (e) {
+                            console.log('  data-a-price解析失敗');
+                        }
+                    }
+                }
+                
+                // 方法3: span要素を全探索
+                if (!price) {
+                    console.log('\n方法3: span要素を全探索');
+                    const allSpans = item.querySelectorAll('span');
+                    for (const span of allSpans) {
+                        const text = span.textContent.trim();
+                        // ￥または¥で始まるパターン
+                        const match = text.match(/^[￥¥]\s*([\d,]+)/);
+                        if (match) {
+                            const numValue = parseInt(match[1].replace(/,/g, ''));
+                            console.log(`  発見: "${text}" → ${numValue}`);
+                            if (numValue >= 100 && numValue < 10000000) {
+                                price = numValue + '円';
+                                priceValue = numValue;
+                                console.log(`  ✅ 価格確定: ${price}`);
+                                break;
                             }
                         }
                     }
                 }
+                
+                console.log(`\n最終結果: ${price || '取得失敗'}`);
                 
                 // 評価
                 let rating = '';
@@ -1077,6 +1159,8 @@
                     discount: ''
                 });
             }
+            
+            console.log(`\n合計 ${products.length}件の商品を取得`);
             
             if (products.length === 0) {
                 throw new Error('商品が見つかりませんでした');
@@ -1135,8 +1219,35 @@
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, 'text/html');
             
+            console.log('=== ランキングページ解析開始 ===');
+            
+            // より多くのセレクタを試す
+            const selectors = [
+                '.zg-grid-general-faceout',
+                '.p13n-sc-uncoverable-faceout',
+                '[data-asin]',
+                '.zg-item-immersion',
+                'div[data-asin]',
+                '.a-carousel-card'
+            ];
+            
+            let items = [];
+            for (const selector of selectors) {
+                const found = doc.querySelectorAll(selector);
+                console.log(`セレクタ "${selector}": ${found.length}件`);
+                if (found.length > 0) {
+                    items = found;
+                    console.log(`✅ 使用するセレクタ: "${selector}"`);
+                    break;
+                }
+            }
+            
+            if (items.length === 0) {
+                console.error('❌ 商品アイテムが見つかりませんでした');
+                throw new Error('商品を取得できませんでした');
+            }
+            
             const products = [];
-            const items = doc.querySelectorAll('.zg-grid-general-faceout, .p13n-sc-uncoverable-faceout');
             
             for (let i = 0; i < Math.min(items.length, 10); i++) {
                 const item = items[i];
@@ -1144,51 +1255,134 @@
                 const asin = item.getAttribute('data-asin') || 
                             item.querySelector('[data-asin]')?.getAttribute('data-asin');
                 
-                if (!asin || asin === '') continue;
+                if (!asin || asin === '') {
+                    console.log(`商品 ${i + 1}: ASIN なし - スキップ`);
+                    continue;
+                }
+                
+                console.log(`\n=== 商品 ${i + 1}: ${asin} ===`);
                 
                 const productUrl = `https://www.amazon.co.jp/dp/${asin}`;
                 
                 // 画像
                 const imgElem = item.querySelector('img');
                 const imageUrl = imgElem ? imgElem.src : '';
+                console.log(`画像: ${imageUrl ? 'あり' : 'なし'}`);
                 
-                // タイトル - ランキングページから直接取得
+                // タイトル - より多くのセレクタ
                 let title = '';
-                const titleElem = item.querySelector('.p13n-sc-truncate, ._cDEzb_p13n-sc-css-line-clamp-3_g3dy1');
-                if (titleElem) {
-                    title = titleElem.textContent.trim();
-                }
+                const titleSelectors = [
+                    '.p13n-sc-truncate',
+                    '._cDEzb_p13n-sc-css-line-clamp-3_g3dy1',
+                    '.a-link-normal',
+                    '[class*="truncate"]',
+                    'h2',
+                    'h3'
+                ];
                 
-                // 価格 - ランキングページから直接取得
+                for (const sel of titleSelectors) {
+                    const elem = item.querySelector(sel);
+                    if (elem && elem.textContent.trim().length > 5) {
+                        title = elem.textContent.trim();
+                        console.log(`タイトル取得: ${sel}`);
+                        break;
+                    }
+                }
+                console.log(`タイトル: ${title || 'なし'}`);
+                
+                // 価格 - ランキングページから直接取得（デバッグ強化版）
                 let price = '';
                 let priceValue = 0;
                 
-                // 方法1: a-price-whole
-                const priceWhole = item.querySelector('.a-price .a-price-whole, ._cDEzb_p13n-sc-price_3mJ9Z');
-                if (priceWhole) {
-                    const text = priceWhole.textContent.replace(/[,.\s]/g, '');
-                    const numValue = parseInt(text);
-                    if (numValue >= 100 && numValue < 10000000) {
-                        price = numValue + '円';
-                        priceValue = numValue;
-                    }
-                }
+                console.log(`\n=== 商品 ${asin} の価格取得開始（ランキング） ===`);
                 
-                // 方法2: a-offscreen
-                if (!price) {
-                    const priceOffscreen = item.querySelector('.a-price .a-offscreen');
-                    if (priceOffscreen) {
-                        const text = priceOffscreen.textContent.trim();
+                // 方法1: a-price全体を探す
+                const allPrices = item.querySelectorAll('.a-price');
+                console.log(`発見した.a-priceの数: ${allPrices.length}`);
+                
+                for (let i = 0; i < allPrices.length; i++) {
+                    const priceBlock = allPrices[i];
+                    console.log(`\n価格ブロック ${i + 1}:`);
+                    
+                    // a-offscreen
+                    const offscreen = priceBlock.querySelector('.a-offscreen');
+                    if (offscreen) {
+                        const text = offscreen.textContent.trim();
+                        console.log(`  a-offscreen: "${text}"`);
                         const match = text.match(/[\d,]+/);
                         if (match) {
                             const numValue = parseInt(match[0].replace(/,/g, ''));
+                            console.log(`  変換後: ${numValue}`);
                             if (numValue >= 100 && numValue < 10000000) {
                                 price = numValue + '円';
                                 priceValue = numValue;
+                                console.log(`  ✅ 価格確定: ${price}`);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    // a-price-whole
+                    if (!price) {
+                        const whole = priceBlock.querySelector('.a-price-whole');
+                        if (whole) {
+                            const text = whole.textContent.replace(/[,.\s]/g, '');
+                            console.log(`  a-price-whole: "${text}"`);
+                            const numValue = parseInt(text);
+                            if (numValue >= 100 && numValue < 10000000) {
+                                price = numValue + '円';
+                                priceValue = numValue;
+                                console.log(`  ✅ 価格確定: ${price}`);
+                                break;
+                            }
+                        }
+                    }
+                    
+                    console.log(`  全テキスト: "${priceBlock.textContent.trim()}"`);
+                }
+                
+                // 方法2: _cDEzb_p13n-sc-price_クラス（新しいランキングUI）
+                if (!price) {
+                    console.log('\n方法2: 新UIの価格クラスを探索');
+                    const newPriceElem = item.querySelector('._cDEzb_p13n-sc-price_3mJ9Z, .p13n-sc-price, [class*="sc-price"]');
+                    if (newPriceElem) {
+                        const text = newPriceElem.textContent.trim();
+                        console.log(`  新UI価格: "${text}"`);
+                        const match = text.match(/[\d,]+/);
+                        if (match) {
+                            const numValue = parseInt(match[0].replace(/,/g, ''));
+                            console.log(`  変換後: ${numValue}`);
+                            if (numValue >= 100 && numValue < 10000000) {
+                                price = numValue + '円';
+                                priceValue = numValue;
+                                console.log(`  ✅ 価格確定: ${price}`);
                             }
                         }
                     }
                 }
+                
+                // 方法3: span要素を全探索
+                if (!price) {
+                    console.log('\n方法3: span要素を全探索');
+                    const allSpans = item.querySelectorAll('span');
+                    for (const span of allSpans) {
+                        const text = span.textContent.trim();
+                        // ￥または¥で始まるパターン
+                        const match = text.match(/^[￥¥]\s*([\d,]+)/);
+                        if (match) {
+                            const numValue = parseInt(match[1].replace(/,/g, ''));
+                            console.log(`  発見: "${text}" → ${numValue}`);
+                            if (numValue >= 100 && numValue < 10000000) {
+                                price = numValue + '円';
+                                priceValue = numValue;
+                                console.log(`  ✅ 価格確定: ${price}`);
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                console.log(`\n最終結果: ${price || '取得失敗'}`);
                 
                 // 評価
                 let rating = '';
@@ -1212,6 +1406,8 @@
                     discount: ''
                 });
             }
+            
+            console.log(`\n合計 ${products.length}件の商品を取得`);
             
             if (products.length === 0) {
                 throw new Error('商品を取得できませんでした');
