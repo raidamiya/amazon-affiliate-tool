@@ -612,10 +612,13 @@
             
             <div class="form-group">
                 <label>📝 投稿テンプレート（カスタマイズ可能）</label>
-                <textarea id="customTemplate" placeholder="PR Amazonで{商品名}が{価格}で販売中。&#10;{リンク}">PR Amazonで{商品名}が{価格}で販売中。
-{リンク}</textarea>
+                <textarea id="customTemplate" placeholder="PR Amazonで{商品名}が{価格}で販売中。&#10;{リンク}&#10;&#10;{タグ}">PR Amazonで{商品名}が{価格}で販売中。
+{リンク}
+
+{タグ}</textarea>
                 <small style="color: #666; font-size: 12px;">
-                    使用可能な変数: {商品名}, {価格}, {割引}, {評価}, {リンク}
+                    使用可能な変数: {商品名}, {価格}, {割引}, {評価}, {リンク}, {タグ}<br>
+                    {タグ}を省略すると自動で末尾に追加されます
                 </small>
             </div>
             
@@ -657,7 +660,11 @@
                 1. Amazon商品URLをコピー<br>
                 2. アソシエイトタグを入力<br>
                 3. テンプレートをカスタマイズ<br>
-                4. 「投稿文を生成」をクリック！
+                4. 「投稿文を生成」をクリック！<br><br>
+                <strong>🏷️ ハッシュタグ自動追加：</strong><br>
+                • 商品カテゴリを自動判定<br>
+                • セール/割引情報に応じてタグ追加<br>
+                • #Amazon #激安 #お得情報 など
             </div>
         </div>
         
@@ -714,7 +721,9 @@
                 <strong>💡 こんな時に：</strong><br>
                 • すぐに結果が欲しい<br>
                 • 価格なしでも投稿できる<br>
-                • たくさんの商品を見たい
+                • たくさんの商品を見たい<br><br>
+                <strong>🏷️ 自動ハッシュタグ：</strong><br>
+                カテゴリ・セール情報に応じて自動追加
             </div>
         </div>
         
@@ -774,7 +783,9 @@
                 <strong>💡 使い分け：</strong><br>
                 • 価格情報が必須 → ⚡ 価格取得強化<br>
                 • すぐに結果が欲しい → 🔍 高速検索<br>
-                • 価格なしでもOK → 🔍 高速検索
+                • 価格なしでもOK → 🔍 高速検索<br><br>
+                <strong>🏷️ 自動ハッシュタグ：</strong><br>
+                カテゴリ・セール情報に応じて自動追加
             </div>
         </div>
         
@@ -861,7 +872,9 @@
                 1. カテゴリを選択<br>
                 2. 「取得」をクリック<br>
                 3. 個別または順番に投稿！<br><br>
-                <strong>⚡ 改善：</strong>ランキングページから直接取得するため高速化！
+                <strong>⚡ 改善：</strong>ランキングページから直接取得するため高速化！<br><br>
+                <strong>🏷️ 自動ハッシュタグ：</strong><br>
+                カテゴリ・セール情報に応じて自動追加
             </div>
         </div>
     </div>
@@ -1930,7 +1943,94 @@
             }
             parts.push(link);
             
+            // ハッシュタグを追加
+            const hashtags = generateHashtags(info);
+            if (hashtags) {
+                parts.push('');  // 空行
+                parts.push(hashtags);
+            }
+            
             return parts.join('\n');
+        }
+        
+        function detectCategory(title) {
+            const titleLower = title.toLowerCase();
+            
+            // カテゴリキーワードマッピング
+            const categories = {
+                '家電': ['テレビ', 'tv', 'カメラ', 'パソコン', 'pc', 'スマホ', 'タブレット', 'イヤホン', 'ヘッドホン', 
+                        'キーボード', 'マウス', 'モニター', 'プリンター', 'スピーカー', '充電', 'バッテリー', 
+                        'switchbot', 'anker', 'エアダスター', 'ケルヒャー'],
+                '本': ['本', '書籍', 'book', 'kindle', 'コミック', '漫画', 'マンガ', '小説', '雑誌'],
+                '食品': ['食品', '飲料', 'ドリンク', 'お菓子', 'スナック', 'チョコ', 'コーヒー', '紅茶', 
+                        'お茶', '水', 'ジュース', 'ワイン', '日本酒', '焼酎', 'ビール', '獺祭', 'だっさい'],
+                '美容': ['化粧品', 'コスメ', '美容', 'スキンケア', 'シャンプー', 'リンス', '香水', 'パック', 
+                        'マスク', '美顔'],
+                'ファッション': ['服', 'tシャツ', 'シャツ', 'パンツ', 'スカート', 'ワンピース', 'ジャケット', 
+                                'コート', 'ファッション', '靴下'],
+                'ホーム': ['キッチン', '調理', '鍋', 'フライパン', '包丁', '食器', 'タオル', '掃除', '洗剤', 
+                          'フィルター', '整流板', 'ホコリ', '排水溝', 'ヘアキャッチャー'],
+                'ソフトウェア': ['office', 'microsoft', 'adobe', 'windows', 'ソフト', 'アプリ', 'minecraft', 
+                              'マインクラフト', 'creative cloud']
+            };
+            
+            for (const [category, keywords] of Object.entries(categories)) {
+                for (const keyword of keywords) {
+                    if (titleLower.includes(keyword)) {
+                        return category;
+                    }
+                }
+            }
+            
+            return null;
+        }
+        
+        function generateHashtags(info) {
+            const tags = [];
+            
+            // 基本タグ（常に追加）
+            tags.push('#Amazon');
+            tags.push('#アマゾン');
+            
+            // 割引がある場合
+            if (info.discount) {
+                tags.push('#セール');
+                tags.push('#激安');
+            }
+            
+            // 価格がある場合
+            if (info.price) {
+                tags.push('#お得情報');
+            }
+            
+            // カテゴリ別タグ
+            const category = detectCategory(info.title);
+            if (category === '家電') {
+                tags.push('#家電');
+                tags.push('#ガジェット');
+            } else if (category === '本') {
+                tags.push('#本');
+                tags.push('#読書');
+            } else if (category === '食品') {
+                tags.push('#食品');
+                tags.push('#グルメ');
+            } else if (category === '美容') {
+                tags.push('#美容');
+                tags.push('#コスメ');
+            } else if (category === 'ファッション') {
+                tags.push('#ファッション');
+            } else if (category === 'ホーム') {
+                tags.push('#ホーム');
+                tags.push('#生活');
+            } else if (category === 'ソフトウェア') {
+                tags.push('#ソフトウェア');
+            }
+            
+            // PR/AD タグ
+            tags.push('#PR');
+            tags.push('#AD');
+            
+            return tags.join(' ');
         }
         
         function createCustomPostText(info, link, template) {
@@ -1951,6 +2051,15 @@
             postText = postText.replace(/\{割引\}/g, info.discount || '');
             postText = postText.replace(/\{評価\}/g, info.rating || '');
             postText = postText.replace(/\{リンク\}/g, link);
+            
+            // ハッシュタグを追加
+            const hashtags = generateHashtags(info);
+            postText = postText.replace(/\{タグ\}/g, hashtags);
+            
+            // {タグ}がテンプレートにない場合は末尾に追加
+            if (!template || !template.includes('{タグ}')) {
+                postText += '\n\n' + hashtags;
+            }
             
             postText = postText.replace(/\n\s*\n/g, '\n').trim();
             
