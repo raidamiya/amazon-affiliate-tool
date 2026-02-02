@@ -2248,7 +2248,9 @@
         
         function createSimplePostText(info, link, sns = 'twitter') {
             console.log('=== createSimplePostText 開始 ===');
-            console.log('商品タイトル:', info.title);
+            console.log('商品情報:', info);
+            console.log('price存在?:', !!info.price, 'value:', info.price);
+            console.log('リンク:', link);
             console.log('SNS:', sns);
             
             if (!info || !info.title) {
@@ -2275,7 +2277,6 @@
                     parts.push(hashtagText);
                 }
                 const result = parts.join('\n');
-                console.log('生成した投稿文の文字数:', result.length);
                 return result;
             }
             
@@ -2293,12 +2294,18 @@
             console.log('フルハッシュタグ:', fullHashtags);
             
             let postText = buildPost(title, fullHashtags);
-            console.log('初回生成:', postText.length, '文字');
+            console.log('初回生成文字数:', postText.length);
+            console.log('初回生成内容:\n' + postText);
             
             // 文字数チェック
             if (postText.length <= limit) {
                 console.log('✅ 文字数OK: そのまま返す');
-                return postText;
+                // 最終チェック（念のため）
+                if (postText.length > limit) {
+                    console.error('🚨 警告: 文字数が制限を超えています！強制調整します');
+                } else {
+                    return postText;
+                }
             }
             
             console.log(`🚨 文字数超過! ${postText.length}文字 / ${limit}文字 - 調整開始`);
@@ -2327,7 +2334,7 @@
             
             for (let i = 0; i < tagPatterns.length; i++) {
                 postText = buildPost(title, tagPatterns[i]);
-                console.log(`パターン${i + 1}:`, postText.length, '文字', '-', tagPatterns[i].substring(0, 30) + '...');
+                console.log(`パターン${i + 1}:`, postText.length, '文字');
                 
                 if (postText.length <= limit) {
                     const tagCount = tagPatterns[i] ? tagPatterns[i].split(' ').filter(Boolean).length : 0;
