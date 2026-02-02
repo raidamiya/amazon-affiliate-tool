@@ -917,6 +917,45 @@
         </div>
     </div>
     
+    <!-- 投稿プレビューモーダル -->
+    <div id="preview-modal" class="modal">
+        <div class="modal-content" style="max-width: 600px;">
+            <h3 id="preview-title">📝 投稿内容を確認</h3>
+            
+            <div style="margin: 15px 0;">
+                <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;">
+                    <label style="font-size: 13px; color: #666;">投稿文:</label>
+                    <div id="char-count" style="font-size: 13px; font-weight: 600; color: #666;">0 / 280</div>
+                </div>
+                <textarea id="preview-text" style="width: 100%; min-height: 180px; padding: 12px; border: 2px solid #e1e8ed; border-radius: 8px; font-size: 14px; line-height: 1.5; font-family: inherit; resize: vertical;" oninput="updateCharCount()"></textarea>
+                <div id="char-warning" style="display: none; color: #f44336; font-size: 12px; margin-top: 5px; font-weight: 600;">
+                    ⚠️ 文字数が超過しています
+                </div>
+            </div>
+            
+            <div style="background: #f7f9fa; padding: 12px; border-radius: 8px; margin-bottom: 15px;">
+                <div style="font-size: 12px; color: #666; margin-bottom: 8px;">
+                    <strong>💡 文字数削減のヒント：</strong>
+                </div>
+                <button class="btn btn-small" onclick="autoShortenText()" style="width: 100%; margin-bottom: 5px;">
+                    ✂️ 自動短縮（タイトル短縮）
+                </button>
+                <button class="btn btn-small" onclick="removeHashtags()" style="width: 100%;">
+                    🏷️ ハッシュタグを削除
+                </button>
+            </div>
+            
+            <div class="modal-buttons button-group">
+                <button class="btn btn-success" onclick="confirmAndPost()" id="confirm-post-btn">
+                    🐦 投稿する
+                </button>
+                <button class="btn btn-outline" onclick="closePreviewModal()">
+                    ❌ キャンセル
+                </button>
+            </div>
+        </div>
+    </div>
+    
     <script>
         let currentPostText = {
             manual: '',
@@ -947,6 +986,14 @@
             currentIndex: 0,
             products: [],
             sns: 'twitter'  // デフォルトはX
+        };
+        
+        let previewState = {
+            postUrl: '',
+            product: null,
+            tab: '',
+            markPosted: true,
+            sns: 'twitter'
         };
         
         const categoryUrls = {
@@ -1864,32 +1911,129 @@
                 }
                 
                 const postText = createSimplePostText(product, affiliateLink, sns);
-                let postUrl = '';
                 
-                // SNS別のURL生成
-                if (sns === 'twitter') {
-                    postUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(postText);
-                } else if (sns === 'threads') {
-                    postUrl = 'https://www.threads.net/intent/post?text=' + encodeURIComponent(postText);
-                } else if (sns === 'pinterest') {
-                    const description = createSimplePostText(product, '', sns).trim();
-                    postUrl = `https://pinterest.com/pin/create/button/?url=${encodeURIComponent(affiliateLink)}&description=${encodeURIComponent(description)}&media=${encodeURIComponent(product.imageUrl)}`;
-                } else if (sns === 'facebook') {
-                    postUrl = `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(affiliateLink)}&quote=${encodeURIComponent(postText)}`;
-                } else if (sns === 'line') {
-                    postUrl = `https://social-plugins.line.me/lineit/share?url=${encodeURIComponent(affiliateLink)}&text=${encodeURIComponent(postText)}`;
-                }
-                
-                window.open(postUrl, '_blank', 'width=550,height=420');
-                
-                if (markPosted) {
-                    markAsPosted(product.asin, tab);
-                }
+                // プレビューモーダルを表示
+                showPreviewModal(postText, product, tab, markPosted, sns);
                 
             } catch (error) {
                 showError(tab, '投稿文の生成に失敗しました: ' + error.message);
                 throw error;
             }
+        }
+        
+        function showPreviewModal(postText, product, tab, markPosted, sns) {
+            // プレビュー状態を保存
+            previewState.product = product;
+            previewState.tab = tab;
+            previewState.markPosted = markPosted;
+            previewState.sns = sns;
+            
+            // テキストエリアに投稿文を設定
+            document.getElementById('preview-text').value = postText;
+            
+            // タイトルを更新
+            const snsName = sns === 'twitter' ? 'X' : 'Threads';
+            document.getElementById('preview-title').textContent = `📝 ${snsName}投稿内容を確認`;
+            
+            // ボタンラベルを更新
+            const btnLabel = sns === 'twitter' ? '🐦 Xで投稿する' : '📷 Threadsで投稿する';
+            document.getElementById('confirm-post-btn').innerHTML = btnLabel;
+            
+            // 文字数カウントを更新
+            updateCharCount();
+            
+            // モーダルを表示
+            document.getElementById('preview-modal').classList.add('show');
+        }
+        
+        function closePreviewModal() {
+            document.getElementById('preview-modal').classList.remove('show');
+        }
+        
+        function updateCharCount() {
+            const text = document.getElementById('preview-text').value;
+            const count = text.length;
+            const sns = previewState.sns;
+            const limit = sns === 'twitter' ? 280 : 500; // Xは280文字、Threadsは500文字
+            
+            const countDiv = document.getElementById('char-count');
+            const warningDiv = document.getElementById('char-warning');
+            
+            countDiv.textContent = `${count} / ${limit}`;
+            
+            if (count > limit) {
+                countDiv.style.color = '#f44336';
+                warningDiv.style.display = 'block';
+            } else {
+                countDiv.style.color = count > limit * 0.9 ? '#ff9800' : '#666';
+                warningDiv.style.display = 'none';
+            }
+        }
+        
+        function autoShortenText() {
+            const textarea = document.getElementById('preview-text');
+            let text = textarea.value;
+            
+            // タイトル部分を短縮
+            const lines = text.split('\n');
+            if (lines.length > 0 && lines[0].startsWith('PR Amazon')) {
+                // 商品名部分を抽出
+                const match = lines[0].match(/PR Amazonで(.+?)(?:が|を)/);
+                if (match) {
+                    let title = match[1];
+                    // タイトルを60文字に短縮
+                    if (title.length > 60) {
+                        title = title.substring(0, 60) + '...';
+                        lines[0] = lines[0].replace(match[1], title);
+                        text = lines.join('\n');
+                        textarea.value = text;
+                        updateCharCount();
+                    }
+                }
+            }
+        }
+        
+        function removeHashtags() {
+            const textarea = document.getElementById('preview-text');
+            let text = textarea.value;
+            
+            // ハッシュタグ行を削除
+            const lines = text.split('\n');
+            const filteredLines = lines.filter(line => !line.trim().startsWith('#'));
+            
+            textarea.value = filteredLines.join('\n');
+            updateCharCount();
+        }
+        
+        function confirmAndPost() {
+            const text = document.getElementById('preview-text').value;
+            const sns = previewState.sns;
+            const limit = sns === 'twitter' ? 280 : 500;
+            
+            // 文字数チェック
+            if (text.length > limit) {
+                alert(`文字数が${limit}文字を超えています。\n文字数を減らしてください。`);
+                return;
+            }
+            
+            // 投稿URLを生成
+            let postUrl = '';
+            if (sns === 'twitter') {
+                postUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(text);
+            } else if (sns === 'threads') {
+                postUrl = 'https://www.threads.net/intent/post?text=' + encodeURIComponent(text);
+            }
+            
+            // 投稿画面を開く
+            window.open(postUrl, '_blank', 'width=550,height=420');
+            
+            // 投稿済みマーク
+            if (previewState.markPosted) {
+                markAsPosted(previewState.product.asin, previewState.tab);
+            }
+            
+            // モーダルを閉じる
+            closePreviewModal();
         }
         
         async function generateFromUrl() {
