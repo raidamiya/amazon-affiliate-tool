@@ -2247,12 +2247,17 @@
         }
         
         function createSimplePostText(info, link, sns = 'twitter') {
+            console.log('=== createSimplePostText 開始 ===');
+            console.log('商品タイトル:', info.title);
+            console.log('SNS:', sns);
+            
             if (!info || !info.title) {
                 console.error('Invalid product info:', info);
                 return '';
             }
             
             const limit = sns === 'twitter' ? 280 : 500;
+            console.log('文字数制限:', limit);
             
             // 投稿文を生成する関数
             function buildPost(productTitle, hashtagText) {
@@ -2269,30 +2274,38 @@
                     parts.push('');
                     parts.push(hashtagText);
                 }
-                return parts.join('\n');
+                const result = parts.join('\n');
+                console.log('生成した投稿文の文字数:', result.length);
+                return result;
             }
             
             // Threads の場合はシンプルに返す
             if (sns === 'threads') {
                 const hashtags = generateHashtagsForThreads(info);
-                return buildPost(info.title, hashtags);
+                const result = buildPost(info.title, hashtags);
+                console.log('Threads投稿文:', result.length, '文字');
+                return result;
             }
             
             // X用の文字数調整ロジック
             let title = info.title;
             let fullHashtags = generateHashtags(info);
+            console.log('フルハッシュタグ:', fullHashtags);
+            
             let postText = buildPost(title, fullHashtags);
+            console.log('初回生成:', postText.length, '文字');
             
             // 文字数チェック
             if (postText.length <= limit) {
-                console.log(`✅ 文字数OK: ${postText.length}文字`);
+                console.log('✅ 文字数OK: そのまま返す');
                 return postText;
             }
             
-            console.log(`⚠️ 文字数超過: ${postText.length}文字 / ${limit}文字 - 調整開始`);
+            console.log(`🚨 文字数超過! ${postText.length}文字 / ${limit}文字 - 調整開始`);
             
             // Step 1: ハッシュタグを段階的に削減
             const allTags = fullHashtags.split(' ').filter(tag => tag.startsWith('#'));
+            console.log('全ハッシュタグ数:', allTags.length);
             
             // ハッシュタグパターン（段階的に削減）
             const tagPatterns = [
@@ -2314,34 +2327,35 @@
             
             for (let i = 0; i < tagPatterns.length; i++) {
                 postText = buildPost(title, tagPatterns[i]);
+                console.log(`パターン${i + 1}:`, postText.length, '文字', '-', tagPatterns[i].substring(0, 30) + '...');
+                
                 if (postText.length <= limit) {
                     const tagCount = tagPatterns[i] ? tagPatterns[i].split(' ').filter(Boolean).length : 0;
-                    console.log(`✂️ ハッシュタグ削減: ${allTags.length}個 → ${tagCount}個 (${postText.length}文字)`);
+                    console.log(`✅ ハッシュタグ削減で解決: ${allTags.length}個 → ${tagCount}個`);
                     return postText;
                 }
             }
             
             // Step 2: 商品名を短縮（ハッシュタグなし）
-            console.log(`⚠️ ハッシュタグ全削除でも超過 → 商品名を短縮`);
+            console.log('🚨 ハッシュタグ全削除でも超過 → 商品名を短縮');
             
             const titleLengths = [70, 60, 50, 40, 30, 25, 20, 15, 10];
             
             for (const maxLen of titleLengths) {
-                if (title.length > maxLen) {
-                    title = info.title.substring(0, maxLen) + '...';
-                    postText = buildPost(title, '');
-                    
-                    if (postText.length <= limit) {
-                        console.log(`✂️ 商品名を${info.title.length}文字 → ${title.length}文字に短縮 (${postText.length}文字)`);
-                        return postText;
-                    }
+                title = info.title.substring(0, maxLen) + '...';
+                postText = buildPost(title, '');
+                console.log(`商品名${maxLen}文字に短縮:`, postText.length, '文字');
+                
+                if (postText.length <= limit) {
+                    console.log(`✅ 商品名短縮で解決: ${info.title.length}文字 → ${maxLen}文字`);
+                    return postText;
                 }
             }
             
             // 最終手段: 極限まで短縮
             title = info.title.substring(0, 10) + '...';
             postText = buildPost(title, '');
-            console.log(`✂️ 最終手段: 商品名を10文字に短縮 (${postText.length}文字)`);
+            console.log(`🔴 最終手段: 10文字に短縮 -`, postText.length, '文字');
             
             return postText;
         }
