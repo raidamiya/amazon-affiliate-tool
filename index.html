@@ -2253,17 +2253,6 @@
             }
             
             const limit = sns === 'twitter' ? 280 : 500;
-            let title = info.title;
-            
-            // SNS別のハッシュタグ生成
-            let fullHashtags = '';
-            if (sns === 'twitter') {
-                fullHashtags = generateHashtags(info);
-            } else if (sns === 'threads') {
-                fullHashtags = generateHashtagsForThreads(info);
-            } else {
-                fullHashtags = generateHashtags(info);
-            }
             
             // 投稿文を生成する関数
             function buildPost(productTitle, hashtagText) {
@@ -2283,63 +2272,76 @@
                 return parts.join('\n');
             }
             
-            // まずフル版を試す
+            // Threads の場合はシンプルに返す
+            if (sns === 'threads') {
+                const hashtags = generateHashtagsForThreads(info);
+                return buildPost(info.title, hashtags);
+            }
+            
+            // X用の文字数調整ロジック
+            let title = info.title;
+            let fullHashtags = generateHashtags(info);
             let postText = buildPost(title, fullHashtags);
             
-            // Xの場合のみ文字数調整
-            if (sns === 'twitter' && postText.length > limit) {
-                console.log(`⚠️ 文字数超過: ${postText.length}文字 / ${limit}文字`);
+            // 文字数チェック
+            if (postText.length <= limit) {
+                console.log(`✅ 文字数OK: ${postText.length}文字`);
+                return postText;
+            }
+            
+            console.log(`⚠️ 文字数超過: ${postText.length}文字 / ${limit}文字 - 調整開始`);
+            
+            // Step 1: ハッシュタグを段階的に削減
+            const allTags = fullHashtags.split(' ').filter(tag => tag.startsWith('#'));
+            
+            // ハッシュタグパターン（段階的に削減）
+            const tagPatterns = [
+                // パターン1: #PR #AD のみ削除
+                allTags.filter(tag => !['#PR', '#AD'].includes(tag)).join(' '),
                 
-                // Step 1: ハッシュタグを段階的に削減
-                const hashtagArray = fullHashtags.split(' ').filter(tag => tag.startsWith('#'));
+                // パターン2: カテゴリタグも削除
+                allTags.filter(tag => ['#Amazon', '#アマゾン', '#セール', '#激安', '#お得情報'].includes(tag)).join(' '),
                 
-                const hashtagLevels = [
-                    // レベル1: #PR #AD のみ削除
-                    hashtagArray.filter(tag => tag !== '#PR' && tag !== '#AD').join(' '),
-                    // レベル2: カテゴリタグも削除（基本タグ+セールのみ）
-                    hashtagArray.filter(tag => 
-                        ['#Amazon', '#アマゾン', '#セール', '#激安'].includes(tag)
-                    ).join(' '),
-                    // レベル3: 最小限（#Amazon のみ）
-                    '#Amazon',
-                    // レベル4: ハッシュタグなし
-                    ''
-                ];
+                // パターン3: セールタグのみ
+                allTags.filter(tag => ['#Amazon', '#セール', '#激安'].includes(tag)).join(' '),
                 
-                for (const hashtags of hashtagLevels) {
-                    postText = buildPost(title, hashtags);
+                // パターン4: #Amazon のみ
+                '#Amazon',
+                
+                // パターン5: ハッシュタグなし
+                ''
+            ];
+            
+            for (let i = 0; i < tagPatterns.length; i++) {
+                postText = buildPost(title, tagPatterns[i]);
+                if (postText.length <= limit) {
+                    const tagCount = tagPatterns[i] ? tagPatterns[i].split(' ').filter(Boolean).length : 0;
+                    console.log(`✂️ ハッシュタグ削減: ${allTags.length}個 → ${tagCount}個 (${postText.length}文字)`);
+                    return postText;
+                }
+            }
+            
+            // Step 2: 商品名を短縮（ハッシュタグなし）
+            console.log(`⚠️ ハッシュタグ全削除でも超過 → 商品名を短縮`);
+            
+            const titleLengths = [70, 60, 50, 40, 30, 25, 20, 15, 10];
+            
+            for (const maxLen of titleLengths) {
+                if (title.length > maxLen) {
+                    title = info.title.substring(0, maxLen) + '...';
+                    postText = buildPost(title, '');
+                    
                     if (postText.length <= limit) {
-                        if (hashtags !== fullHashtags) {
-                            const tagCount = hashtags ? hashtags.split(' ').filter(Boolean).length : 0;
-                            console.log(`✂️ ハッシュタグを削減: ${hashtagArray.length}個 → ${tagCount}個`);
-                        }
+                        console.log(`✂️ 商品名を${info.title.length}文字 → ${title.length}文字に短縮 (${postText.length}文字)`);
                         return postText;
                     }
                 }
-                
-                // Step 2: それでも超過する場合、商品名を短縮
-                console.log('⚠️ ハッシュタグ削除でも超過 → 商品名を短縮します');
-                
-                // 商品名の短縮パターン（段階的に短く）
-                const titleLengths = [60, 50, 40, 30, 25, 20];
-                
-                for (const maxLength of titleLengths) {
-                    if (title.length > maxLength) {
-                        title = title.substring(0, maxLength) + '...';
-                        postText = buildPost(title, '');  // ハッシュタグなし
-                        
-                        if (postText.length <= limit) {
-                            console.log(`✂️ 商品名を${info.title.length}文字から${title.length}文字に短縮`);
-                            return postText;
-                        }
-                    }
-                }
-                
-                // 最終手段: 15文字まで短縮
-                title = title.substring(0, 15) + '...';
-                postText = buildPost(title, '');
-                console.log(`✂️ 商品名を15文字まで短縮（最終手段）`);
             }
+            
+            // 最終手段: 極限まで短縮
+            title = info.title.substring(0, 10) + '...';
+            postText = buildPost(title, '');
+            console.log(`✂️ 最終手段: 商品名を10文字に短縮 (${postText.length}文字)`);
             
             return postText;
         }
