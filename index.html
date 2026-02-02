@@ -664,7 +664,10 @@
                 <strong>🏷️ ハッシュタグ自動追加：</strong><br>
                 • 商品カテゴリを自動判定<br>
                 • セール/割引情報に応じてタグ追加<br>
-                • #Amazon #激安 #お得情報 など
+                • #Amazon #激安 #お得情報 など<br><br>
+                <strong>✂️ 自動文字数調整：</strong><br>
+                • 280文字超過時は商品名を自動短縮<br>
+                • 直接X投稿画面に遷移
             </div>
         </div>
         
@@ -725,7 +728,9 @@
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
                 カテゴリ・セール情報に応じて自動追加<br><br>
                 <strong>📱 複数SNS対応：</strong><br>
-                X / Threads
+                X / Threads<br><br>
+                <strong>✂️ 自動文字数調整:</strong><br>
+                280文字超過時は商品名を自動短縮
             </div>
         </div>
         
@@ -789,7 +794,9 @@
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
                 カテゴリ・セール情報に応じて自動追加<br><br>
                 <strong>📱 複数SNS対応：</strong><br>
-                X / Threads
+                X / Threads<br><br>
+                <strong>✂️ 自動文字数調整:</strong><br>
+                280文字超過時は商品名を自動短縮
             </div>
         </div>
         
@@ -880,7 +887,9 @@
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
                 カテゴリ・セール情報に応じて自動追加<br><br>
                 <strong>📱 複数SNS対応：</strong><br>
-                X / Threads
+                X / Threads<br><br>
+                <strong>✂️ 自動文字数調整:</strong><br>
+                280文字超過時は商品名を自動短縮
             </div>
         </div>
     </div>
@@ -1811,7 +1820,7 @@
             // 一括投稿モーダルを閉じる
             document.getElementById('bulk-modal').classList.remove('show');
             
-            // プレビューモーダル経由で投稿
+            // 投稿実行（自動でnextProductが呼ばれる）
             generateAndPostProduct(product, tab, false, sns);
         }
         
@@ -1932,8 +1941,27 @@
                     throw new Error('投稿文の生成に失敗しました');
                 }
                 
-                // プレビューモーダルを表示
-                showPreviewModal(postText, product, tab, markPosted, sns);
+                // 投稿URLを生成して直接開く
+                let postUrl = '';
+                if (sns === 'twitter') {
+                    postUrl = 'https://twitter.com/intent/tweet?text=' + encodeURIComponent(postText);
+                } else if (sns === 'threads') {
+                    postUrl = 'https://www.threads.net/intent/post?text=' + encodeURIComponent(postText);
+                }
+                
+                window.open(postUrl, '_blank', 'width=550,height=420');
+                
+                // 投稿済みマーク
+                if (markPosted) {
+                    markAsPosted(product.asin, tab);
+                }
+                
+                // 順番投稿モードの場合、自動で次へ
+                if (bulkPostState.active) {
+                    setTimeout(() => {
+                        nextProduct();
+                    }, 500);
+                }
                 
             } catch (error) {
                 console.error('generateAndPostProduct error:', error);
@@ -2224,11 +2252,16 @@
                 return '';
             }
             
+            const limit = sns === 'twitter' ? 280 : 500;
+            
+            // 初回生成
+            let title = info.title;
             const parts = [];
+            
             if (info.price) {
-                parts.push(`PR Amazonで${info.title}が${info.price}で販売中。`);
+                parts.push(`PR Amazonで${title}が${info.price}で販売中。`);
             } else {
-                parts.push(`PR Amazonで${info.title}を販売中。`);
+                parts.push(`PR Amazonで${title}を販売中。`);
             }
             
             if (link) {
@@ -2238,22 +2271,75 @@
             // SNS別のハッシュタグ戦略
             let hashtags = '';
             if (sns === 'twitter') {
-                // X: フルハッシュタグ
                 hashtags = generateHashtags(info);
             } else if (sns === 'threads') {
-                // Threads: 最小限のハッシュタグ（#Amazon #PR のみ）
                 hashtags = generateHashtagsForThreads(info);
             } else {
-                // その他: デフォルト
                 hashtags = generateHashtags(info);
             }
             
             if (hashtags) {
-                parts.push('');  // 空行
+                parts.push('');
                 parts.push(hashtags);
             }
             
-            return parts.join('\n');
+            let postText = parts.join('\n');
+            
+            // 文字数チェック（Xのみ）
+            if (sns === 'twitter' && postText.length > limit) {
+                // 商品名を段階的に短縮
+                const maxTitleLength = title.length;
+                
+                for (let cutLength = 80; cutLength >= 20; cutLength -= 10) {
+                    if (title.length > cutLength) {
+                        title = title.substring(0, cutLength) + '...';
+                        
+                        // 再生成
+                        const newParts = [];
+                        if (info.price) {
+                            newParts.push(`PR Amazonで${title}が${info.price}で販売中。`);
+                        } else {
+                            newParts.push(`PR Amazonで${title}を販売中。`);
+                        }
+                        
+                        if (link) {
+                            newParts.push(link);
+                        }
+                        
+                        if (hashtags) {
+                            newParts.push('');
+                            newParts.push(hashtags);
+                        }
+                        
+                        postText = newParts.join('\n');
+                        
+                        // 280文字以内になったら終了
+                        if (postText.length <= limit) {
+                            console.log(`✂️ 商品名を${maxTitleLength}文字から${title.length}文字に短縮しました`);
+                            break;
+                        }
+                    }
+                }
+                
+                // まだ超過している場合はハッシュタグを削除
+                if (postText.length > limit) {
+                    const finalParts = [];
+                    if (info.price) {
+                        finalParts.push(`PR Amazonで${title}が${info.price}で販売中。`);
+                    } else {
+                        finalParts.push(`PR Amazonで${title}を販売中。`);
+                    }
+                    
+                    if (link) {
+                        finalParts.push(link);
+                    }
+                    
+                    postText = finalParts.join('\n');
+                    console.log('⚠️ ハッシュタグを削除して文字数を調整しました');
+                }
+            }
+            
+            return postText;
         }
         
         function generateHashtagsForThreads(info) {
