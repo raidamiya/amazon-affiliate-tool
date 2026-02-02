@@ -1892,10 +1892,23 @@
         }
         
         async function generateAndPostProduct(product, tab, markPosted = true, sns = 'twitter') {
+            // 商品情報チェック
+            if (!product || !product.url) {
+                showError(tab, '商品情報が不正です');
+                return;
+            }
+            
             const tagId = tab === 'ranking' ? 'tag-ranking' : tab === 'detailed' ? 'tag-detailed' : 'tag-search';
-            const tag = document.getElementById(tagId).value.trim();
+            const tagElem = document.getElementById(tagId);
+            if (!tagElem) {
+                showError(tab, 'タグ入力欄が見つかりません');
+                return;
+            }
+            const tag = tagElem.value.trim();
+            
             const useShortUrlId = tab === 'ranking' ? 'useShortUrl-ranking' : tab === 'detailed' ? 'useShortUrl-detailed' : 'useShortUrl-search';
-            const useShortUrl = document.getElementById(useShortUrlId).checked;
+            const useShortUrlElem = document.getElementById(useShortUrlId);
+            const useShortUrl = useShortUrlElem ? useShortUrlElem.checked : true;
             
             if (!tag) {
                 showError(tab, 'アソシエイトタグを入力してください');
@@ -1905,44 +1918,70 @@
             try {
                 let affiliateLink = createAffiliateLink(product.url, tag);
                 
+                if (!affiliateLink) {
+                    throw new Error('アフィリエイトリンクの生成に失敗しました');
+                }
+                
                 if (useShortUrl) {
                     affiliateLink = await shortenUrl(affiliateLink);
                 }
                 
                 const postText = createSimplePostText(product, affiliateLink, sns);
                 
+                if (!postText) {
+                    throw new Error('投稿文の生成に失敗しました');
+                }
+                
                 // プレビューモーダルを表示
                 showPreviewModal(postText, product, tab, markPosted, sns);
                 
             } catch (error) {
+                console.error('generateAndPostProduct error:', error);
                 showError(tab, '投稿文の生成に失敗しました: ' + error.message);
-                throw error;
             }
         }
         
         function showPreviewModal(postText, product, tab, markPosted, sns) {
+            // 入力チェック
+            if (!postText) {
+                console.error('postText is empty or undefined');
+                showError(tab, '投稿文の生成に失敗しました');
+                return;
+            }
+            
             // プレビュー状態を保存
             previewState.product = product;
             previewState.tab = tab;
             previewState.markPosted = markPosted;
-            previewState.sns = sns;
+            previewState.sns = sns || 'twitter';
+            
+            // モーダルを先に表示
+            document.getElementById('preview-modal').classList.add('show');
             
             // テキストエリアに投稿文を設定
-            document.getElementById('preview-text').value = postText;
+            const textArea = document.getElementById('preview-text');
+            if (textArea) {
+                textArea.value = postText || '';
+            }
             
             // タイトルを更新
             const snsName = sns === 'twitter' ? 'X' : 'Threads';
-            document.getElementById('preview-title').textContent = `📝 ${snsName}投稿内容を確認`;
+            const titleElem = document.getElementById('preview-title');
+            if (titleElem) {
+                titleElem.textContent = `📝 ${snsName}投稿内容を確認`;
+            }
             
             // ボタンラベルを更新
             const btnLabel = sns === 'twitter' ? '🐦 Xで投稿する' : '📷 Threadsで投稿する';
-            document.getElementById('confirm-post-btn').innerHTML = btnLabel;
+            const btnElem = document.getElementById('confirm-post-btn');
+            if (btnElem) {
+                btnElem.innerHTML = btnLabel;
+            }
             
-            // 文字数カウントを更新
-            updateCharCount();
-            
-            // モーダルを表示
-            document.getElementById('preview-modal').classList.add('show');
+            // 文字数カウントを更新（モーダル表示後に実行）
+            setTimeout(() => {
+                updateCharCount();
+            }, 50);
         }
         
         function closePreviewModal() {
@@ -1957,13 +1996,24 @@
         }
         
         function updateCharCount() {
-            const text = document.getElementById('preview-text').value;
+            const textArea = document.getElementById('preview-text');
+            if (!textArea) {
+                console.error('preview-text element not found');
+                return;
+            }
+            
+            const text = textArea.value || '';
             const count = text.length;
-            const sns = previewState.sns;
+            const sns = previewState.sns || 'twitter';
             const limit = sns === 'twitter' ? 280 : 500; // Xは280文字、Threadsは500文字
             
             const countDiv = document.getElementById('char-count');
             const warningDiv = document.getElementById('char-warning');
+            
+            if (!countDiv || !warningDiv) {
+                console.error('char-count or char-warning element not found');
+                return;
+            }
             
             countDiv.textContent = `${count} / ${limit}`;
             
@@ -2169,13 +2219,21 @@
         }
         
         function createSimplePostText(info, link, sns = 'twitter') {
+            if (!info || !info.title) {
+                console.error('Invalid product info:', info);
+                return '';
+            }
+            
             const parts = [];
             if (info.price) {
                 parts.push(`PR Amazonで${info.title}が${info.price}で販売中。`);
             } else {
                 parts.push(`PR Amazonで${info.title}を販売中。`);
             }
-            parts.push(link);
+            
+            if (link) {
+                parts.push(link);
+            }
             
             // SNS別のハッシュタグ戦略
             let hashtags = '';
