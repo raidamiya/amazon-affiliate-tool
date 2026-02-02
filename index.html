@@ -2258,8 +2258,10 @@
                 return '';
             }
             
-            const limit = sns === 'twitter' ? 280 : 500;
-            console.log('文字数制限:', limit);
+            // Xは特殊な文字数カウントを使用するため、安全マージンを設定
+            // 実際の制限280文字に対して、250文字を上限とする
+            const limit = sns === 'twitter' ? 250 : 500;
+            console.log('文字数制限（安全マージン込み）:', limit);
             
             // 投稿文を生成する関数
             function buildPost(productTitle, hashtagText) {
@@ -2299,13 +2301,8 @@
             
             // 文字数チェック
             if (postText.length <= limit) {
-                console.log('✅ 文字数OK: そのまま返す');
-                // 最終チェック（念のため）
-                if (postText.length > limit) {
-                    console.error('🚨 警告: 文字数が制限を超えています！強制調整します');
-                } else {
-                    return postText;
-                }
+                console.log(`✅ 文字数OK: ${postText.length}文字 / ${limit}文字（安全マージン込み）`);
+                return postText;
             }
             
             console.log(`🚨 文字数超過! ${postText.length}文字 / ${limit}文字 - 調整開始`);
