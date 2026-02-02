@@ -1808,12 +1808,11 @@
             const tab = bulkPostState.tab;
             const sns = bulkPostState.sns || 'twitter';
             
-            generateAndPostProduct(product, tab, false, sns);
+            // 一括投稿モーダルを閉じる
+            document.getElementById('bulk-modal').classList.remove('show');
             
-            // 投稿後、自動で次の商品に移動
-            setTimeout(() => {
-                nextProduct();
-            }, 500);
+            // プレビューモーダル経由で投稿
+            generateAndPostProduct(product, tab, false, sns);
         }
         
         function skipCurrentProduct() {
@@ -1948,6 +1947,13 @@
         
         function closePreviewModal() {
             document.getElementById('preview-modal').classList.remove('show');
+            
+            // 順番投稿モードの場合、元のモーダルに戻る
+            if (bulkPostState.active) {
+                setTimeout(() => {
+                    showBulkModal();
+                }, 200);
+            }
         }
         
         function updateCharCount() {
@@ -2032,8 +2038,15 @@
                 markAsPosted(previewState.product.asin, previewState.tab);
             }
             
-            // モーダルを閉じる
+            // プレビューモーダルを閉じる
             closePreviewModal();
+            
+            // 順番投稿モードの場合、自動で次へ
+            if (bulkPostState.active) {
+                setTimeout(() => {
+                    nextProduct();
+                }, 500);
+            }
         }
         
         async function generateFromUrl() {
