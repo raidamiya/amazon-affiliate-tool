@@ -2257,9 +2257,9 @@
             }
             
             // Xは特殊な文字数カウントを使用するため、大きめの安全マージンを設定
-            // 実際の制限280文字に対して、220文字を上限とする（60文字のマージン）
-            const limit = sns === 'twitter' ? 220 : 500;
-            console.log('文字数制限（安全マージン60文字）:', limit);
+            // 実際の制限280文字に対して、200文字を上限とする（80文字のマージン）
+            const limit = sns === 'twitter' ? 200 : 500;
+            console.log('文字数制限（安全マージン80文字）:', limit);
             
             // 投稿文を生成する関数
             function buildPost(productTitle, hashtagText) {
@@ -2338,7 +2338,7 @@
             // Step 2: 商品名を短縮（ハッシュタグなし）
             console.log('🚨 商品名を短縮');
             
-            const titleLengths = [60, 50, 40, 30, 25, 20, 15, 10];
+            const titleLengths = [50, 40, 30, 25, 20, 15, 10];
             
             for (const maxLen of titleLengths) {
                 title = info.title.substring(0, maxLen) + '...';
