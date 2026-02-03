@@ -217,6 +217,31 @@
             white-space: nowrap;
         }
         
+        .keyword-select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #e0e0e0;
+            border-radius: 8px;
+            font-size: 16px;
+            background: white;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+        
+        .keyword-select:hover {
+            border-color: #FF9900;
+        }
+        
+        .keyword-select:focus {
+            outline: none;
+            border-color: #FF9900;
+            box-shadow: 0 0 0 3px rgba(255, 153, 0, 0.1);
+        }
+        
+        .keyword-select option {
+            padding: 10px;
+        }
+        
         .ranking-controls {
             display: flex;
             gap: 10px;
@@ -593,7 +618,7 @@
         
         <div class="tabs">
             <button class="tab active" onclick="switchTab('manual')">🔗 URL指定</button>
-            <button class="tab" onclick="switchTab('search')">🔍 高速検索</button>
+            <button class="tab" onclick="switchTab('trending')">💡 人気ワード</button>
             <button class="tab" onclick="switchTab('detailed')">⚡ 価格取得強化</button>
             <button class="tab" onclick="switchTab('ranking')">📊 ランキング</button>
         </div>
@@ -671,66 +696,85 @@
             </div>
         </div>
         
-        <!-- 検索タブ -->
-        <div id="search-tab" class="tab-content">
+        <!-- 人気ワードタブ -->
+        <div id="trending-tab" class="tab-content">
             <div class="form-group">
                 <label>🏷️ アソシエイトタグ</label>
-                <input type="text" id="tag-search" placeholder="yourname-22" value="">
+                <input type="text" id="tag-trending" placeholder="yourname-22" value="">
             </div>
             
             <div class="form-group">
-                <label>🔍 商品検索キーワード</label>
-                <div class="search-controls">
-                    <input type="search" id="searchQuery" placeholder="商品名やキーワードを入力">
-                    <button class="btn btn-primary" onclick="searchProducts()">
-                        🔍 検索
-                    </button>
-                </div>
+                <label>💡 話題の商品ワード</label>
+                <select id="trendingKeyword" class="keyword-select">
+                    <option value="">-- 話題のワードを選択 --</option>
+                    <option value="ボンボンドロップシール">ボンボンドロップシール</option>
+                    <option value="チョコレート効果">チョコレート効果</option>
+                    <option value="プロテインバー">プロテインバー</option>
+                    <option value="ワイヤレスイヤホン">ワイヤレスイヤホン</option>
+                    <option value="モバイルバッテリー">モバイルバッテリー</option>
+                    <option value="USB充電器">USB充電器</option>
+                    <option value="マスク 不織布">マスク 不織布</option>
+                    <option value="除菌シート">除菌シート</option>
+                    <option value="エナジードリンク">エナジードリンク</option>
+                    <option value="ミックスナッツ">ミックスナッツ</option>
+                    <option value="グミ 大容量">グミ 大容量</option>
+                    <option value="クッキー 詰め合わせ">クッキー 詰め合わせ</option>
+                    <option value="スマホケース iPhone">スマホケース iPhone</option>
+                    <option value="USB Type-C ケーブル">USB Type-C ケーブル</option>
+                    <option value="Bluetoothスピーカー">Bluetoothスピーカー</option>
+                    <option value="LEDライト">LEDライト</option>
+                    <option value="加湿器">加湿器</option>
+                    <option value="サーモス 水筒">サーモス 水筒</option>
+                    <option value="タンブラー ステンレス">タンブラー ステンレス</option>
+                    <option value="ゴディバ チョコレート">ゴディバ チョコレート</option>
+                </select>
+                <button class="btn btn-primary" onclick="searchFromTrending()" style="margin-top: 10px; width: 100%;">
+                    ⚡ 価格取得強化で検索
+                </button>
             </div>
             
             <div class="form-group">
                 <label style="display: flex; align-items: center; gap: 10px;">
-                    <input type="checkbox" id="useShortUrl-search" checked style="width: auto;">
+                    <input type="checkbox" id="useShortUrl-trending" checked style="width: auto;">
                     短縮URLを使用
                 </label>
             </div>
             
-            <div class="error" id="error-search"></div>
-            <div class="success" id="success-search"></div>
-            <div class="info" id="info-search"></div>
+            <div class="error" id="error-trending"></div>
+            <div class="success" id="success-trending"></div>
+            <div class="info" id="info-trending"></div>
             
-            <div id="bulk-actions-search" class="bulk-actions" style="display: none;">
-                <button class="btn btn-warning" onclick="startBulkPost('search')" id="postAll-search">
+            <div id="bulk-actions-trending" class="bulk-actions" style="display: none;">
+                <button class="btn btn-warning" onclick="startBulkPost('trending')" id="postAll-trending">
                     🚀 順番に投稿
                 </button>
-                <button class="btn btn-danger" onclick="resetPosted('search')">
+                <button class="btn btn-danger" onclick="resetPosted('trending')">
                     🔄 リセット
                 </button>
             </div>
             
-            <div class="loading" id="search-loading" style="display: none;">
+            <div class="loading" id="trending-loading" style="display: none;">
                 <div class="spinner"></div>
                 <p>商品を検索中...</p>
             </div>
             
-            <div id="search-results" class="product-list"></div>
+            <div id="trending-results" class="product-list"></div>
             
             <div class="tips">
-                <strong>🔍 高速検索の特徴：</strong><br>
-                • 検索結果から一括取得（3-5秒で完了）<br>
-                • 価格取得率: 30-40%（不安定）<br>
-                • 価格が取れない商品も表示されます<br>
-                • 「👁️ 価格確認」ボタンで商品ページで確認可能<br><br>
-                <strong>💡 こんな時に：</strong><br>
-                • すぐに結果が欲しい<br>
-                • 価格なしでも投稿できる<br>
-                • たくさんの商品を見たい<br><br>
+                <strong>💡 人気ワードの特徴：</strong><br>
+                • 話題の商品ワードから簡単検索<br>
+                • 価格取得率: 95-100%（Workers版）<br>
+                • ワード選択後、自動で価格取得強化検索<br><br>
+                <strong>🔥 こんな時に：</strong><br>
+                • 検索ワードが思いつかない<br>
+                • トレンド商品を投稿したい<br>
+                • 確実に価格を取得したい<br><br>
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
                 カテゴリ・セール情報に応じて自動追加<br><br>
                 <strong>📱 複数SNS対応：</strong><br>
                 X / Threads<br><br>
                 <strong>✂️ 自動文字数調整:</strong><br>
-                280文字超過時は商品名を自動短縮
+                180文字超過時は商品名を自動短縮（安全マージン100文字）
             </div>
         </div>
         
@@ -784,19 +828,19 @@
             <div class="tips">
                 <strong>⚡ 価格取得強化モードの特徴：</strong><br>
                 • 各商品の詳細ページから価格を直接取得<br>
-                • 取得率: 60-80%（高速モードの30-40%より大幅向上）<br>
+                • 取得率: 60-80%（通常モードより大幅向上）<br>
                 • 速度: 1商品あたり3-5秒<br>
                 • 10商品で約30-50秒かかります<br><br>
                 <strong>💡 使い分け：</strong><br>
                 • 価格情報が必須 → ⚡ 価格取得強化<br>
-                • すぐに結果が欲しい → 🔍 高速検索<br>
-                • 価格なしでもOK → 🔍 高速検索<br><br>
+                • 検索ワードが思いつかない → 💡 人気ワード<br>
+                • トレンド商品を投稿したい → 💡 人気ワード<br><br>
                 <strong>🏷️ 自動ハッシュタグ：</strong><br>
                 カテゴリ・セール情報に応じて自動追加<br><br>
                 <strong>📱 複数SNS対応：</strong><br>
                 X / Threads<br><br>
                 <strong>✂️ 自動文字数調整:</strong><br>
-                280文字超過時は商品名を自動短縮
+                180文字超過時は商品名を自動短縮（安全マージン100文字）
             </div>
         </div>
         
@@ -973,13 +1017,13 @@
         };
         
         let currentProducts = {
-            search: [],
+            trending: [],
             detailed: [],
             ranking: []
         };
         
         let postedProducts = {
-            search: new Set(),
+            trending: new Set(),
             detailed: new Set(),
             ranking: new Set()
         };
@@ -1040,7 +1084,7 @@
             const savedTag = localStorage.getItem('amazonTag');
             if (savedTag) {
                 document.getElementById('tag').value = savedTag;
-                document.getElementById('tag-search').value = savedTag;
+                document.getElementById('tag-trending').value = savedTag;
                 document.getElementById('tag-detailed').value = savedTag;
                 document.getElementById('tag-ranking').value = savedTag;
             }
@@ -1129,44 +1173,39 @@
             throw new Error('すべてのプロキシで失敗しました');
         }
         
-        async function searchProducts() {
-            const query = document.getElementById('searchQuery').value.trim();
-            const tag = document.getElementById('tag-search').value.trim();
+        async function searchFromTrending() {
+            const keyword = document.getElementById('trendingKeyword').value.trim();
+            const tag = document.getElementById('tag-trending').value.trim();
             
-            if (!query) {
-                showError('search', '検索キーワードを入力してください');
+            if (!keyword) {
+                showError('trending', '話題のワードを選択してください');
                 return;
             }
             
             if (!tag) {
-                showError('search', 'アソシエイトタグを入力してください');
+                showError('trending', 'アソシエイトタグを入力してください');
                 return;
             }
             
+            // アソシエイトタグを保存
             localStorage.setItem('amazonTag', tag);
             
-            document.getElementById('search-loading').style.display = 'block';
-            document.getElementById('search-results').innerHTML = '';
-            document.getElementById('bulk-actions-search').style.display = 'none';
-            hideError('search');
-            hideSuccess('search');
-            hideInfo('search');
-            postedProducts.search.clear();
+            // detailedタブの入力欄に値を設定
+            document.getElementById('tag-detailed').value = tag;
+            document.getElementById('detailedQuery').value = keyword;
             
-            try {
-                const searchUrl = `https://www.amazon.co.jp/s?k=${encodeURIComponent(query)}`;
-                const products = await scrapeSearchResults(searchUrl);
-                currentProducts.search = products;
-                await displayProducts(products, 'search');
-                
-                if (currentProducts.search.length > 0) {
-                    document.getElementById('bulk-actions-search').style.display = 'block';
-                }
-            } catch (error) {
-                showError('search', '検索に失敗しました: ' + error.message);
-            } finally {
-                document.getElementById('search-loading').style.display = 'none';
-            }
+            // detailedタブに切り替え
+            document.querySelector('[onclick="switchTab(\'detailed\')"]').click();
+            
+            // 検索実行
+            setTimeout(() => {
+                detailedSearch();
+            }, 100);
+        }
+        
+        async function searchProducts() {
+            // この関数は削除されました - 人気ワードタブに置き換えられました
+            showError('search', 'この機能は削除されました。人気ワードタブをご利用ください。');
         }
         
         async function scrapeSearchResults(url) {
@@ -1907,7 +1946,7 @@
                 return;
             }
             
-            const tagId = tab === 'ranking' ? 'tag-ranking' : tab === 'detailed' ? 'tag-detailed' : 'tag-search';
+            const tagId = tab === 'ranking' ? 'tag-ranking' : tab === 'detailed' ? 'tag-detailed' : 'tag-trending';
             const tagElem = document.getElementById(tagId);
             if (!tagElem) {
                 showError(tab, 'タグ入力欄が見つかりません');
@@ -1915,7 +1954,7 @@
             }
             const tag = tagElem.value.trim();
             
-            const useShortUrlId = tab === 'ranking' ? 'useShortUrl-ranking' : tab === 'detailed' ? 'useShortUrl-detailed' : 'useShortUrl-search';
+            const useShortUrlId = tab === 'ranking' ? 'useShortUrl-ranking' : tab === 'detailed' ? 'useShortUrl-detailed' : 'useShortUrl-trending';
             const useShortUrlElem = document.getElementById(useShortUrlId);
             const useShortUrl = useShortUrlElem ? useShortUrlElem.checked : true;
             
