@@ -2248,9 +2248,7 @@
         
         function createSimplePostText(info, link, sns = 'twitter') {
             console.log('=== createSimplePostText 開始 ===');
-            console.log('商品情報:', info);
-            console.log('price存在?:', !!info.price, 'value:', info.price);
-            console.log('リンク:', link);
+            console.log('商品タイトル:', info.title);
             console.log('SNS:', sns);
             
             if (!info || !info.title) {
@@ -2258,10 +2256,10 @@
                 return '';
             }
             
-            // Xは特殊な文字数カウントを使用するため、安全マージンを設定
-            // 実際の制限280文字に対して、250文字を上限とする
-            const limit = sns === 'twitter' ? 250 : 500;
-            console.log('文字数制限（安全マージン込み）:', limit);
+            // Xは特殊な文字数カウントを使用するため、大きめの安全マージンを設定
+            // 実際の制限280文字に対して、220文字を上限とする（60文字のマージン）
+            const limit = sns === 'twitter' ? 220 : 500;
+            console.log('文字数制限（安全マージン60文字）:', limit);
             
             // 投稿文を生成する関数
             function buildPost(productTitle, hashtagText) {
@@ -2296,22 +2294,19 @@
             console.log('フルハッシュタグ:', fullHashtags);
             
             let postText = buildPost(title, fullHashtags);
-            console.log('初回生成文字数:', postText.length);
-            console.log('初回生成内容:\n' + postText);
+            console.log('初回生成:', postText.length, '文字');
             
             // 文字数チェック
             if (postText.length <= limit) {
-                console.log(`✅ 文字数OK: ${postText.length}文字 / ${limit}文字（安全マージン込み）`);
+                console.log(`✅ OK: ${postText.length}/${limit}文字`);
                 return postText;
             }
             
-            console.log(`🚨 文字数超過! ${postText.length}文字 / ${limit}文字 - 調整開始`);
+            console.log(`🚨 超過: ${postText.length}/${limit}文字 - 調整開始`);
             
             // Step 1: ハッシュタグを段階的に削減
             const allTags = fullHashtags.split(' ').filter(tag => tag.startsWith('#'));
-            console.log('全ハッシュタグ数:', allTags.length);
             
-            // ハッシュタグパターン（段階的に削減）
             const tagPatterns = [
                 // パターン1: #PR #AD のみ削除
                 allTags.filter(tag => !['#PR', '#AD'].includes(tag)).join(' '),
@@ -2331,27 +2326,27 @@
             
             for (let i = 0; i < tagPatterns.length; i++) {
                 postText = buildPost(title, tagPatterns[i]);
-                console.log(`パターン${i + 1}:`, postText.length, '文字');
+                console.log(`パターン${i + 1}: ${postText.length}文字`);
                 
                 if (postText.length <= limit) {
                     const tagCount = tagPatterns[i] ? tagPatterns[i].split(' ').filter(Boolean).length : 0;
-                    console.log(`✅ ハッシュタグ削減で解決: ${allTags.length}個 → ${tagCount}個`);
+                    console.log(`✅ ハッシュタグ削減: ${allTags.length}→${tagCount}個`);
                     return postText;
                 }
             }
             
             // Step 2: 商品名を短縮（ハッシュタグなし）
-            console.log('🚨 ハッシュタグ全削除でも超過 → 商品名を短縮');
+            console.log('🚨 商品名を短縮');
             
-            const titleLengths = [70, 60, 50, 40, 30, 25, 20, 15, 10];
+            const titleLengths = [60, 50, 40, 30, 25, 20, 15, 10];
             
             for (const maxLen of titleLengths) {
                 title = info.title.substring(0, maxLen) + '...';
                 postText = buildPost(title, '');
-                console.log(`商品名${maxLen}文字に短縮:`, postText.length, '文字');
+                console.log(`${maxLen}文字: ${postText.length}文字`);
                 
                 if (postText.length <= limit) {
-                    console.log(`✅ 商品名短縮で解決: ${info.title.length}文字 → ${maxLen}文字`);
+                    console.log(`✅ 短縮完了: ${info.title.length}→${maxLen}文字`);
                     return postText;
                 }
             }
@@ -2359,7 +2354,7 @@
             // 最終手段: 極限まで短縮
             title = info.title.substring(0, 10) + '...';
             postText = buildPost(title, '');
-            console.log(`🔴 最終手段: 10文字に短縮 -`, postText.length, '文字');
+            console.log(`🔴 最終: ${postText.length}文字`);
             
             return postText;
         }
