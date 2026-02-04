@@ -1236,52 +1236,82 @@
                 // 更新情報を表示
                 const now = new Date();
                 const timeStr = `${now.getMonth() + 1}/${now.getDate()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-                updateInfo.textContent = `Amazon人気商品から自動取得 | 最終更新: ${timeStr}`;
+                updateInfo.textContent = `Amazon人気商品から取得 | 最終更新: ${timeStr}`;
                 
                 select.disabled = false;
                 console.log(`✅ ${keywords.length}個のキーワードを取得しました`);
                 
             } catch (error) {
                 console.error('トレンドキーワード取得エラー:', error);
-                select.innerHTML = '<option value="">-- 取得失敗（デフォルトリスト使用）--</option>';
                 
-                // デフォルトリスト
-                const defaultKeywords = [
-                    'チョコレート効果', 'プロテインバー', 'ワイヤレスイヤホン',
-                    'モバイルバッテリー', 'USB充電器', 'マスク 不織布',
-                    '除菌シート', 'エナジードリンク', 'ミックスナッツ',
-                    'グミ 大容量', 'クッキー 詰め合わせ', 'スマホケース',
-                    'USB Type-C ケーブル', 'Bluetoothスピーカー', 'LEDライト',
-                    '加湿器', 'サーモス 水筒', 'タンブラー', 'ゴディバ', 'フェレロロシェ'
-                ];
-                
-                defaultKeywords.forEach(keyword => {
-                    const option = document.createElement('option');
-                    option.value = keyword;
-                    option.textContent = keyword;
-                    select.appendChild(option);
-                });
-                
-                updateInfo.textContent = 'デフォルトリスト使用中';
+                // エラー時はデフォルトリストを表示
+                loadDefaultKeywords();
+                updateInfo.textContent = '取得失敗 - デフォルトリスト使用中';
                 select.disabled = false;
             }
         }
         
-        async function fetchTrendingKeywords() {
-            console.log('Amazonベストセラーから取得開始...');
-            
-            // 複数カテゴリのベストセラーページ
-            const categories = [
-                { name: '食品', url: 'https://www.amazon.co.jp/gp/bestsellers/food-beverage' },
-                { name: 'ホーム', url: 'https://www.amazon.co.jp/gp/bestsellers/kitchen' },
-                { name: '家電', url: 'https://www.amazon.co.jp/gp/bestsellers/electronics' },
-                { name: 'ビューティー', url: 'https://www.amazon.co.jp/gp/bestsellers/beauty' },
-                { name: 'おもちゃ', url: 'https://www.amazon.co.jp/gp/bestsellers/toys' }
+        function loadDefaultKeywords() {
+            // バランスの取れた固定キーワードリスト（25個）
+            const defaultKeywords = [
+                'ボンボンドロップシール',
+                'チョコレート効果',
+                'フェレロロシェ',
+                'ゴディバ',
+                'プロテインバー',
+                'ミックスナッツ',
+                'グミ',
+                'クッキー',
+                'ワイヤレスイヤホン',
+                'モバイルバッテリー',
+                'USB Type-C ケーブル',
+                'Bluetoothスピーカー',
+                'スマホケース',
+                'マスク',
+                '除菌シート',
+                '加湿器',
+                'LEDライト',
+                'サーモス',
+                'タンブラー',
+                'エナジードリンク',
+                'プロテイン',
+                'ビタミンC',
+                'コラーゲン',
+                '入浴剤',
+                'アロマディフューザー'
             ];
             
-            const allTitles = [];
+            const select = document.getElementById('trendingKeyword');
+            select.innerHTML = '<option value="">-- 話題のワードを選択 --</option>';
             
-            // 各カテゴリから商品タイトルを取得
+            defaultKeywords.forEach(keyword => {
+                const option = document.createElement('option');
+                option.value = keyword;
+                option.textContent = keyword;
+                select.appendChild(option);
+            });
+            
+            console.log('✅ デフォルトキーワードを表示しました');
+        }
+        
+        async function fetchTrendingKeywords() {
+            console.log('Amazonランキングから取得開始...');
+            
+            // より多様なカテゴリ（10カテゴリ）
+            const categories = [
+                { name: '食品', url: 'https://www.amazon.co.jp/gp/bestsellers/food-beverage', keywords: [] },
+                { name: 'ホーム', url: 'https://www.amazon.co.jp/gp/bestsellers/kitchen', keywords: [] },
+                { name: '家電', url: 'https://www.amazon.co.jp/gp/bestsellers/electronics', keywords: [] },
+                { name: 'PC周辺機器', url: 'https://www.amazon.co.jp/gp/bestsellers/computers', keywords: [] },
+                { name: 'ビューティー', url: 'https://www.amazon.co.jp/gp/bestsellers/beauty', keywords: [] },
+                { name: 'ヘルス&ケア', url: 'https://www.amazon.co.jp/gp/bestsellers/hpc', keywords: [] },
+                { name: 'おもちゃ', url: 'https://www.amazon.co.jp/gp/bestsellers/toys', keywords: [] },
+                { name: 'スポーツ', url: 'https://www.amazon.co.jp/gp/bestsellers/sports', keywords: [] },
+                { name: 'ファッション', url: 'https://www.amazon.co.jp/gp/bestsellers/fashion', keywords: [] },
+                { name: 'ホビー', url: 'https://www.amazon.co.jp/gp/bestsellers/hobby', keywords: [] }
+            ];
+            
+            // 各カテゴリから商品タイトルを取得してキーワード抽出
             for (const category of categories) {
                 try {
                     console.log(`${category.name}カテゴリ取得中...`);
@@ -1292,67 +1322,104 @@
                     // ベストセラーの商品タイトルを取得
                     const titles = doc.querySelectorAll('.p13n-sc-truncate, .a-link-normal .a-size-small, ._cDEzb_p13n-sc-css-line-clamp-3_g3dy1');
                     
+                    const categoryTitles = [];
+                    let count = 0;
                     titles.forEach(title => {
+                        if (count >= 10) return; // カテゴリあたり10個まで
                         const text = title.textContent.trim();
                         if (text && text.length > 3 && text.length < 100) {
-                            allTitles.push(text);
+                            categoryTitles.push(text);
+                            count++;
                         }
                     });
                     
+                    // このカテゴリからキーワードを抽出（カテゴリごとに3個まで）
+                    category.keywords = extractKeywordsFromCategory(categoryTitles, 3);
+                    
+                    console.log(`${category.name}: ${category.keywords.length}個のキーワード - ${category.keywords.join(', ')}`);
+                    
                     // レート制限を避けるため少し待機
-                    await new Promise(resolve => setTimeout(resolve, 1000));
+                    await new Promise(resolve => setTimeout(resolve, 800));
                     
                 } catch (error) {
                     console.error(`${category.name}カテゴリの取得失敗:`, error);
                 }
             }
             
-            console.log(`合計${allTitles.length}個の商品タイトルを取得`);
+            // 各カテゴリから均等にキーワードを収集
+            const finalKeywords = [];
+            categories.forEach(category => {
+                finalKeywords.push(...category.keywords);
+            });
             
-            // キーワード抽出
-            const keywords = extractKeywords(allTitles);
+            // 重複を除去
+            const uniqueKeywords = [...new Set(finalKeywords)];
             
-            return keywords.slice(0, 25); // トップ25個を返す
+            console.log(`最終的に${uniqueKeywords.length}個のユニークなキーワードを取得`);
+            console.log('結果:', uniqueKeywords.slice(0, 10));
+            
+            return uniqueKeywords.slice(0, 30); // トップ30個を返す
         }
         
-        function extractKeywords(titles) {
-            console.log('キーワード抽出開始...');
-            
+        function extractKeywordsFromCategory(titles, maxKeywords = 3) {
             const wordFrequency = {};
+            const seenProducts = new Set();
+            
+            // 除外する単語（商品属性やノイズ）
             const stopWords = new Set([
-                'Amazon', 'amazon', 'セット', 'パック', '個入', '本入', '個', '本', 
-                'まとめ買い', '大容量', '詰め合わせ', 'Amazon.co.jp',
-                '限定', '公式', '正規品', '日本製', '国産', 'ブランド'
+                'Amazon', 'amazon', 'アマゾン', 'by',
+                'セット', 'パック', '個入', '本入', '個', '本',
+                'まとめ買い', '大容量', '詰め合わせ', 
+                '限定', '公式', '正規品', '日本製', '国産', 'ブランド',
+                '24本', '12本', '48本', '500ml', '2L', '1L', '350ml',
+                'ラベルレス', 'ペットボトル', 'ボトル',
+                '天然水', '炭酸水', 'ミネラルウォーター',
+                '×', 'x', 'X', 'ml', 'g', 'kg', 'L'
             ]);
             
             titles.forEach(title => {
+                // 同じ商品からの重複を防ぐ（最初の15文字で判定）
+                const productKey = title.substring(0, 15).toLowerCase();
+                if (seenProducts.has(productKey)) {
+                    return;
+                }
+                seenProducts.add(productKey);
+                
                 // タイトルをクリーニング
-                let cleaned = title.replace(/【.*?】/g, ' '); // 【】を除去
-                cleaned = cleaned.replace(/\[.*?\]/g, ' '); // []を除去
-                cleaned = cleaned.replace(/\(.*?\)/g, ' '); // ()を除去
-                cleaned = cleaned.replace(/（.*?）/g, ' '); // （）を除去
-                cleaned = cleaned.replace(/[0-9]+個入り?/g, ' '); // 数字+個入を除去
-                cleaned = cleaned.replace(/[0-9]+本入り?/g, ' '); // 数字+本入を除去
-                cleaned = cleaned.replace(/[0-9]+ml/g, ' '); // 容量を除去
-                cleaned = cleaned.replace(/[0-9]+g/g, ' '); // 重量を除去
-                cleaned = cleaned.replace(/[0-9]+kg/g, ' '); // 重量を除去
+                let cleaned = title.replace(/【.*?】/g, ' ');
+                cleaned = cleaned.replace(/\[.*?\]/g, ' ');
+                cleaned = cleaned.replace(/\(.*?\)/g, ' ');
+                cleaned = cleaned.replace(/（.*?）/g, ' ');
+                cleaned = cleaned.replace(/[0-9]+個入り?/g, ' ');
+                cleaned = cleaned.replace(/[0-9]+本入り?/g, ' ');
+                cleaned = cleaned.replace(/[0-9]+×/gi, ' ');
+                cleaned = cleaned.replace(/×[0-9]+/gi, ' ');
+                cleaned = cleaned.replace(/[0-9]+ml/gi, ' ');
+                cleaned = cleaned.replace(/[0-9]+L/gi, ' ');
+                cleaned = cleaned.replace(/[0-9]+g/gi, ' ');
+                cleaned = cleaned.replace(/by Amazon/gi, ' ');
                 
-                // 2-4単語の連続フレーズを抽出
+                // 単語を抽出（最初の4単語のみ優先）
                 const words = cleaned.split(/[\s、。・×]+/).filter(w => w.length > 0);
+                const topWords = words.slice(0, 4);
                 
-                for (let i = 0; i < words.length; i++) {
-                    // 2単語フレーズ
-                    if (i < words.length - 1) {
-                        const phrase = words[i] + ' ' + words[i + 1];
-                        if (phrase.length >= 4 && phrase.length <= 30 && !stopWords.has(words[i]) && !stopWords.has(words[i + 1])) {
-                            wordFrequency[phrase] = (wordFrequency[phrase] || 0) + 1;
-                        }
+                for (let i = 0; i < topWords.length; i++) {
+                    const word = topWords[i];
+                    
+                    // 数字のみ、ストップワード、短すぎる単語を除外
+                    if (/^[0-9]+$/.test(word) || stopWords.has(word) || word.length < 3) {
+                        continue;
                     }
                     
-                    // 単一単語（3文字以上）
-                    const word = words[i];
-                    if (word.length >= 3 && word.length <= 20 && !stopWords.has(word) && !/^[0-9]+$/.test(word)) {
-                        wordFrequency[word] = (wordFrequency[word] || 0) + 1;
+                    // 4文字以上の単語を抽出
+                    if (word.length >= 4 && word.length <= 12) {
+                        // カタカナのみ、漢字を含む、英字を含む単語を優先
+                        let weight = 1;
+                        if (/^[ァ-ヴー]+$/.test(word)) weight = 3; // カタカナのみ（ブランド名）
+                        if (/[一-龯]/.test(word)) weight = 2; // 漢字を含む
+                        if (/[A-Za-z]/.test(word)) weight = 2; // 英字を含む
+                        
+                        wordFrequency[word] = (wordFrequency[word] || 0) + weight;
                     }
                 }
             });
@@ -1362,49 +1429,21 @@
                 .sort((a, b) => b[1] - a[1])
                 .map(entry => entry[0]);
             
-            console.log(`抽出されたキーワード数: ${sorted.length}`);
-            console.log('トップ10:', sorted.slice(0, 10));
-            
-            return sorted;
+            return sorted.slice(0, maxKeywords);
         }
         
-        // ページ読み込み時にキャッシュをチェック
+        // ページ読み込み時は固定リストを表示
         function loadCachedTrendingKeywords() {
-            const cached = localStorage.getItem('trendingKeywords');
-            if (cached) {
-                try {
-                    const cacheData = JSON.parse(cached);
-                    const age = Date.now() - cacheData.timestamp;
-                    const maxAge = 24 * 60 * 60 * 1000; // 24時間
-                    
-                    if (age < maxAge) {
-                        // キャッシュが有効
-                        const select = document.getElementById('trendingKeyword');
-                        const updateInfo = document.getElementById('trending-update-info');
-                        
-                        select.innerHTML = '<option value="">-- 話題のワードを選択 --</option>';
-                        cacheData.keywords.forEach(keyword => {
-                            const option = document.createElement('option');
-                            option.value = keyword;
-                            option.textContent = keyword;
-                            select.appendChild(option);
-                        });
-                        
-                        const cacheDate = new Date(cacheData.timestamp);
-                        const timeStr = `${cacheDate.getMonth() + 1}/${cacheDate.getDate()} ${cacheDate.getHours()}:${String(cacheDate.getMinutes()).padStart(2, '0')}`;
-                        updateInfo.textContent = `Amazon人気商品から自動取得 | 最終更新: ${timeStr}`;
-                        
-                        console.log('✅ キャッシュからキーワードを読み込みました');
-                        return true;
-                    }
-                } catch (error) {
-                    console.error('キャッシュの読み込みエラー:', error);
-                }
-            }
+            console.log('初期キーワード読み込み開始...');
             
-            // キャッシュがない、または期限切れの場合は自動更新
-            updateTrendingKeywords();
-            return false;
+            // まずデフォルトリストを表示
+            loadDefaultKeywords();
+            
+            const updateInfo = document.getElementById('trending-update-info');
+            updateInfo.textContent = 'デフォルトリスト表示中 | 🔄ボタンで最新取得';
+            
+            console.log('✅ デフォルトキーワードを表示しました');
+            return true;
         }
         
         async function scrapeSearchResults(url) {
