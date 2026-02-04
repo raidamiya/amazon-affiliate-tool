@@ -998,6 +998,39 @@
             </label>
         </div>
 
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" id="auto-mode-enabled" style="width: auto;">
+                完全自動モード（Tampermonkey必須）
+            </label>
+            <small style="color: #666; font-size: 12px; margin-left: 25px;">ONにすると投稿ボタンも自動でクリックされます</small>
+        </div>
+
+        <div class="form-group" id="confirm-time-group" style="display: none;">
+            <label>⏱️ 投稿前の確認時間（秒）</label>
+            <input type="number" id="confirm-time" value="3" min="0" max="30">
+            <small style="color: #666; font-size: 12px;">Tampermonkeyスクリプトで投稿ボタンをクリックするまでの待機時間</small>
+        </div>
+
+        <div class="form-group">
+            <label style="display: flex; align-items: center; gap: 10px;">
+                <input type="checkbox" id="avoid-duplicate-keywords" checked style="width: auto;">
+                使用済みキーワードを避ける
+            </label>
+            <small style="color: #666; font-size: 12px; margin-left: 25px;">全キーワード使用済みの場合、新しいワードを自動取得します</small>
+        </div>
+
+        <div id="used-keywords-info" style="background: #fff3cd; border: 2px solid #ffc107; padding: 10px; border-radius: 8px; margin: 10px 0; display: none;">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="font-size: 13px; color: #856404;">
+                    📝 使用済みキーワード: <strong id="used-keywords-count">0</strong>個
+                </div>
+                <button class="btn btn-outline" onclick="autoPoster.clearUsedKeywords()" style="padding: 5px 10px; font-size: 12px;">
+                    🔄 リセット
+                </button>
+            </div>
+        </div>
+
         <div id="auto-status" style="display: none; background: #e3f2fd; border: 2px solid #90caf9; padding: 15px; border-radius: 8px; margin: 15px 0;">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px;">
                 <strong style="color: #1565c0;">🤖 自動投稿実行中</strong>
@@ -1034,16 +1067,22 @@
             1. キーワードリストから順番に検索<br>
             2. 各キーワードで商品を取得（Workers版 - 価格取得率95-100%）<br>
             3. 指定した間隔で自動投稿<br>
-            4. 全キーワード完了後、最初に戻る（ループ）<br><br>
+            4. 使用済みキーワードは自動でスキップ<br>
+            5. 全キーワード使用後、新しいワードを自動取得<br><br>
+            <strong>🔄 完全自動モード（Tampermonkey）：</strong><br>
+            • Tampermonkeyスクリプトをインストール<br>
+            • 「完全自動モード」にチェック<br>
+            • 投稿ボタンまで自動でクリックされます<br>
+            • 確認時間を調整できます（デフォルト3秒）<br><br>
             <strong>⚠️ 注意事項：</strong><br>
             • ブラウザタブを閉じると停止します<br>
             • PCをスリープすると停止します<br>
             • 30分以上の間隔を推奨（スパム判定回避）<br>
-            • 投稿はXの投稿画面が開くので、手動で「投稿」ボタンを押してください<br><br>
+            • 完全自動モードはTampermonkeyが必須です<br><br>
             <strong>💡 ヒント：</strong><br>
-            • キーワードは5-10個程度が最適<br>
-            • 夜間は自動停止することを推奨<br>
-            • 定期的にログを確認してください<br>
+            • キーワードは空欄にすると人気ワードから自動取得<br>
+            • 使用済みキーワードは自動的にスキップされます<br>
+            • 全キーワード使用後、新規ワードを自動取得します<br>
             • 文字数は180文字以内に自動調整されます（安全マージン100文字）
         </div>
     </div>
@@ -2979,6 +3018,24 @@
                     failedPosts: 0,
                     startTime: null
                 };
+                
+                // UI制御の初期化
+                this.initUIControls();
+            }
+            
+            initUIControls() {
+                // 完全自動モードのチェックボックス制御
+                const autoModeCheckbox = document.getElementById('auto-mode-enabled');
+                const confirmTimeGroup = document.getElementById('confirm-time-group');
+                
+                if (autoModeCheckbox) {
+                    autoModeCheckbox.addEventListener('change', (e) => {
+                        confirmTimeGroup.style.display = e.target.checked ? 'block' : 'none';
+                    });
+                }
+                
+                // 使用済みキーワード表示の初期化
+                this.updateUsedKeywordsDisplay();
             }
 
             saveSettings() {
@@ -2987,7 +3044,10 @@
                     interval: document.getElementById('post-interval').value,
                     postsPerKeyword: document.getElementById('posts-per-keyword').value,
                     useTrending: document.getElementById('auto-use-trending').checked,
-                    skipNoPrice: document.getElementById('auto-skip-no-price').checked
+                    skipNoPrice: document.getElementById('auto-skip-no-price').checked,
+                    autoMode: document.getElementById('auto-mode-enabled').checked,
+                    confirmTime: document.getElementById('confirm-time').value,
+                    avoidDuplicate: document.getElementById('avoid-duplicate-keywords').checked
                 };
                 localStorage.setItem('autoPosterSettings', JSON.stringify(settings));
             }
@@ -3006,10 +3066,81 @@
                         if (settings.skipNoPrice !== undefined) {
                             document.getElementById('auto-skip-no-price').checked = settings.skipNoPrice;
                         }
+                        if (settings.autoMode !== undefined) {
+                            document.getElementById('auto-mode-enabled').checked = settings.autoMode;
+                            document.getElementById('confirm-time-group').style.display = settings.autoMode ? 'block' : 'none';
+                        }
+                        if (settings.confirmTime !== undefined) {
+                            document.getElementById('confirm-time').value = settings.confirmTime;
+                        }
+                        if (settings.avoidDuplicate !== undefined) {
+                            document.getElementById('avoid-duplicate-keywords').checked = settings.avoidDuplicate;
+                        }
                     } catch (e) {
                         console.error('設定の読み込みエラー:', e);
                     }
                 }
+            }
+            
+            // 使用済みキーワードの管理
+            getUsedKeywords() {
+                const saved = localStorage.getItem('usedKeywords');
+                return saved ? JSON.parse(saved) : [];
+            }
+            
+            markKeywordAsUsed(keyword) {
+                const used = this.getUsedKeywords();
+                if (!used.includes(keyword)) {
+                    used.push(keyword);
+                    localStorage.setItem('usedKeywords', JSON.stringify(used));
+                    this.updateUsedKeywordsDisplay();
+                    this.log(`キーワード「${keyword}」を使用済みとしてマーク`, 'info');
+                }
+            }
+            
+            clearUsedKeywords() {
+                localStorage.removeItem('usedKeywords');
+                this.updateUsedKeywordsDisplay();
+                this.log('使用済みキーワードをクリアしました', 'success');
+            }
+            
+            updateUsedKeywordsDisplay() {
+                const used = this.getUsedKeywords();
+                const countElem = document.getElementById('used-keywords-count');
+                const infoElem = document.getElementById('used-keywords-info');
+                
+                if (countElem) {
+                    countElem.textContent = used.length;
+                }
+                
+                if (infoElem) {
+                    infoElem.style.display = used.length > 0 ? 'block' : 'none';
+                }
+            }
+            
+            getNextAvailableKeyword() {
+                const avoidDuplicate = document.getElementById('avoid-duplicate-keywords').checked;
+                
+                if (!avoidDuplicate) {
+                    // 重複回避しない場合は通常通り
+                    return this.keywords[this.currentKeywordIndex];
+                }
+                
+                const usedKeywords = this.getUsedKeywords();
+                
+                // 未使用のキーワードを探す
+                for (let i = 0; i < this.keywords.length; i++) {
+                    const index = (this.currentKeywordIndex + i) % this.keywords.length;
+                    const keyword = this.keywords[index];
+                    
+                    if (!usedKeywords.includes(keyword)) {
+                        this.currentKeywordIndex = index;
+                        return keyword;
+                    }
+                }
+                
+                // 全キーワードが使用済み
+                return null;
             }
 
             log(message, type = 'info') {
@@ -3114,7 +3245,43 @@
             async processNext() {
                 if (!this.isRunning) return;
 
-                const keyword = this.keywords[this.currentKeywordIndex];
+                // 次の使用可能なキーワードを取得
+                const keyword = this.getNextAvailableKeyword();
+                
+                // 全キーワードが使用済みの場合
+                if (!keyword) {
+                    this.log('全キーワードが使用済みです', 'warning');
+                    
+                    const avoidDuplicate = document.getElementById('avoid-duplicate-keywords').checked;
+                    if (avoidDuplicate) {
+                        this.log('新しいキーワードを取得します...', 'info');
+                        
+                        // 使用済みキーワードをクリア
+                        this.clearUsedKeywords();
+                        
+                        // 人気ワードから新規取得
+                        await this.loadTrendingKeywords();
+                        
+                        if (this.keywords.length > 0) {
+                            this.currentKeywordIndex = 0;
+                            this.log(`新しいキーワード${this.keywords.length}個を取得しました`, 'success');
+                            // 再度processNextを実行
+                            await this.processNext();
+                            return;
+                        } else {
+                            this.log('キーワードの取得に失敗しました', 'error');
+                            this.stop();
+                            return;
+                        }
+                    } else {
+                        // 重複回避OFFの場合は最初に戻る
+                        this.currentKeywordIndex = 0;
+                        this.log('最初のキーワードに戻ります', 'info');
+                        await this.processNext();
+                        return;
+                    }
+                }
+                
                 const postsPerKeyword = parseInt(document.getElementById('posts-per-keyword').value);
 
                 this.log(`キーワード「${keyword}」で検索中...`, 'info');
@@ -3159,6 +3326,8 @@
                     this.currentProductIndex++;
 
                     if (this.currentProductIndex >= postsPerKeyword) {
+                        // キーワードを使用済みとしてマーク
+                        this.markKeywordAsUsed(keyword);
                         this.moveToNextKeyword();
                     }
 
@@ -3179,7 +3348,6 @@
 
                 if (this.currentKeywordIndex >= this.keywords.length) {
                     this.currentKeywordIndex = 0;
-                    this.log('全キーワード完了 - 最初に戻ります', 'info');
                 }
             }
 
@@ -3320,7 +3488,17 @@
 
             openTwitterPost(text) {
                 const encodedText = encodeURIComponent(text);
-                const twitterUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;
+                const autoMode = document.getElementById('auto-mode-enabled').checked;
+                const confirmTime = document.getElementById('confirm-time').value || '3';
+                
+                let twitterUrl = `https://twitter.com/intent/tweet?text=${encodedText}`;
+                
+                // 完全自動モードの場合、autopostパラメータを追加
+                if (autoMode) {
+                    twitterUrl += `&autopost=1&confirmtime=${confirmTime}`;
+                    this.log(`完全自動モード: ${confirmTime}秒後に自動投稿`, 'info');
+                }
+                
                 window.open(twitterUrl, '_blank', 'width=600,height=400');
             }
         }
@@ -3333,5 +3511,118 @@
             autoPoster.loadSettings();
         });
     </script>
+    
+    <!--
+    ========================================
+    🤖 Tampermonkey スクリプト（完全自動投稿用）
+    ========================================
+    
+    以下のスクリプトをTampermonkeyにインストールしてください：
+    
+    // ==UserScript==
+    // @name         X(Twitter) 自動投稿ボタン押下
+    // @namespace    http://tampermonkey.net/
+    // @version      1.1
+    // @description  Amazon アフィリエイト自動投稿の最終ステップを自動化
+    // @author       You
+    // @match        https://twitter.com/intent/tweet*
+    // @match        https://x.com/intent/tweet*
+    // @grant        none
+    // ==/UserScript==
+
+    (function() {
+        'use strict';
+
+        // URLパラメータをチェック
+        const urlParams = new URLSearchParams(window.location.search);
+        const autopost = urlParams.get('autopost');
+        const confirmtime = urlParams.get('confirmtime') || '3';
+
+        // autopost=1 が付いている場合のみ自動投稿
+        if (autopost === '1') {
+            console.log('🤖 自動投稿モード検出');
+            console.log(`⏱️ 確認時間: ${confirmtime}秒`);
+
+            // ページ読み込み完了後に実行
+            window.addEventListener('load', function() {
+                // 指定秒数待機（投稿内容を確認する時間）
+                const waitMs = parseInt(confirmtime) * 1000;
+                
+                setTimeout(function() {
+                    console.log('🔍 投稿ボタンを探しています...');
+
+                    // 投稿ボタンを探す（複数のセレクタを試行）
+                    const selectors = [
+                        '[data-testid="tweetButton"]',
+                        '[data-testid="tweetButtonInline"]',
+                        'button[type="button"][role="button"]'
+                    ];
+
+                    let tweetButton = null;
+                    for (const selector of selectors) {
+                        const buttons = document.querySelectorAll(selector);
+                        for (const btn of buttons) {
+                            // "Post"または"投稿"というテキストを含むボタンを探す
+                            if (btn.textContent.includes('Post') || 
+                                btn.textContent.includes('投稿') || 
+                                btn.textContent.includes('ポスト')) {
+                                tweetButton = btn;
+                                console.log(`✅ 投稿ボタン発見: ${selector}`);
+                                break;
+                            }
+                        }
+                        if (tweetButton) break;
+                    }
+
+                    if (tweetButton) {
+                        // ボタンが有効か確認
+                        if (!tweetButton.disabled && !tweetButton.hasAttribute('disabled')) {
+                            console.log('🚀 投稿ボタンをクリックします...');
+                            tweetButton.click();
+
+                            // 投稿完了後、2秒後にウィンドウを閉じる
+                            setTimeout(function() {
+                                console.log('✅ 投稿完了 - ウィンドウを閉じます');
+                                window.close();
+                            }, 2000);
+                        } else {
+                            console.error('❌ 投稿ボタンが無効です');
+                        }
+                    } else {
+                        console.error('❌ 投稿ボタンが見つかりません');
+                        console.log('ℹ️ 手動で投稿ボタンを押してください');
+                    }
+                }, waitMs);
+            });
+        }
+    })();
+    
+    ========================================
+    📝 インストール手順
+    ========================================
+    
+    1. Chrome拡張機能ストアからTampermonkeyをインストール
+       https://chrome.google.com/webstore/detail/tampermonkey/
+    
+    2. Tampermonkeyダッシュボードを開く
+       - Tampermonkeyアイコンをクリック
+       - 「ダッシュボード」を選択
+    
+    3. 新しいスクリプトを作成
+       - 「+」ボタンをクリック
+       - 上記のスクリプトをコピー&ペースト
+       - Ctrl+S（Mac: Cmd+S）で保存
+    
+    4. スクリプトが有効か確認
+       - Tampermonkeyアイコンをクリック
+       - スクリプトがONになっているか確認
+    
+    5. 自動投稿を開始
+       - 🤖 自動投稿タブで「完全自動モード」にチェック
+       - 確認時間を設定（デフォルト3秒）
+       - 🚀 自動投稿を開始
+    
+    ========================================
+    -->
 </body>
 </html>
