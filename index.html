@@ -2855,53 +2855,62 @@
         function generateHashtags(info) {
             const tags = [];
             
-            // 基本タグ（常に追加）
-            tags.push('#Amazon');
-            tags.push('#アマゾン');
-            
-            // 割引がある場合
-            if (info.discount) {
-                tags.push('#セール');
-                tags.push('#激安');
-            }
-            
-            // 価格がある場合
-            if (info.price) {
-                tags.push('#お得情報');
-            }
-            
-            // カテゴリ別タグ
+            // カテゴリを検出
             const category = detectCategory(info.title);
-            if (category === '贈答') {
-                tags.push('#ギフト');
-                tags.push('#プレゼント');
-            } else if (category === '家電') {
-                tags.push('#家電');
-                tags.push('#ガジェット');
-            } else if (category === '本') {
-                tags.push('#本');
-                tags.push('#読書');
-            } else if (category === '食品') {
-                tags.push('#食品');
-                tags.push('#グルメ');
-            } else if (category === '美容') {
-                tags.push('#美容');
-                tags.push('#コスメ');
-            } else if (category === 'ファッション') {
-                tags.push('#ファッション');
-            } else if (category === 'ホーム') {
-                tags.push('#ホーム');
-                tags.push('#生活');
-            } else if (category === 'ソフトウェア') {
-                tags.push('#ソフトウェア');
-            }
             
-            // PR/AD タグ
-            tags.push('#PR');
-            tags.push('#AD');
+            // カテゴリ別の最適なハッシュタグを生成（#PR #AD は完全削除）
+            if (category === 'ワイヤレスイヤホン') {
+                tags.push('#Amazonセール', '#ワイヤレスイヤホン', '#買ってよかった', '#ガジェット');
+            } else if (category === 'モバイルバッテリー') {
+                tags.push('#Amazonセール', '#モバイルバッテリー', '#買ってよかった', '#便利グッズ');
+            } else if (category === 'スマートウォッチ') {
+                tags.push('#Amazonセール', '#スマートウォッチ', '#買ってよかった', '#ガジェット');
+            } else if (category === 'PC周辺機器') {
+                tags.push('#Amazonセール', '#PC周辺機器', '#買ってよかった', '#ガジェット');
+            } else if (category === 'プロテイン') {
+                tags.push('#Amazonセール', '#プロテイン', '#筋トレ', '#ダイエット');
+            } else if (category === 'サプリメント') {
+                tags.push('#Amazonセール', '#サプリメント', '#健康', '#美容');
+            } else if (category === '美容家電') {
+                tags.push('#Amazonセール', '#美容家電', '#買ってよかった', '#美容');
+            } else if (category === 'チョコレート') {
+                tags.push('#Amazonセール', '#チョコレート', '#お菓子', '#スイーツ');
+            } else if (category === 'エナジードリンク') {
+                tags.push('#Amazonセール', '#エナジードリンク', '#まとめ買い');
+            } else if (category === 'ナッツ') {
+                tags.push('#Amazonセール', '#ミックスナッツ', '#ヘルシー', '#おやつ');
+            } else if (category === 'プロテインバー') {
+                tags.push('#Amazonセール', '#プロテインバー', '#ダイエット', '#おやつ');
+            } else if (category === 'マスク') {
+                tags.push('#Amazonセール', '#マスク', '#まとめ買い');
+            } else if (category === '除菌') {
+                tags.push('#Amazonセール', '#除菌', '#清潔', '#衛生');
+            } else if (category === 'シール') {
+                tags.push('#Amazonセール', '#シール', '#文房具', '#かわいい');
+            } else if (category === '家電') {
+                tags.push('#Amazonセール', '#家電', '#買ってよかった', '#便利');
+            } else if (category === '本') {
+                tags.push('#Amazonセール', '#本', '#読書', '#おすすめ本');
+            } else if (category === '食品') {
+                tags.push('#Amazonセール', '#食品', '#まとめ買い', '#お得');
+            } else if (category === '美容') {
+                tags.push('#Amazonセール', '#美容', '#スキンケア', '#コスメ');
+            } else if (category === 'ファッション') {
+                tags.push('#Amazonセール', '#ファッション', '#買ってよかった');
+            } else if (category === 'ホーム') {
+                tags.push('#Amazonセール', '#生活用品', '#便利グッズ', '#買ってよかった');
+            } else if (category === 'ソフトウェア') {
+                tags.push('#Amazonセール', '#ソフトウェア', '#PC');
+            } else if (category === '贈答') {
+                tags.push('#Amazonセール', '#ギフト', '#プレゼント', '#贈り物');
+            } else {
+                // カテゴリ不明の場合は汎用タグ（#PR #AD は含まない）
+                tags.push('#Amazonセール', '#Amazon', '#買ってよかった');
+            }
             
             return tags.join(' ');
         }
+
         
         function createCustomPostText(info, link, template) {
             let postText = template || `PR Amazonで{商品名}が{価格}で販売中。\n{リンク}`;
