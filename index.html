@@ -642,7 +642,8 @@
             
             <div class="form-group">
                 <label>📝 投稿テンプレート（カスタマイズ可能）</label>
-                <textarea id="customTemplate" placeholder="PR Amazonで{商品名}が{価格}で販売中。&#10;{リンク}&#10;&#10;{タグ}">PR Amazonで{商品名}が{価格}で販売中。
+                <textarea id="customTemplate" placeholder="{商品名}&#10;詳細・最新価格はこちら⇒⇒&#10;{リンク}&#10;&#10;{タグ}">{商品名}
+詳細・最新価格はこちら⇒⇒
 {リンク}
 
 {タグ}</textarea>
@@ -2909,17 +2910,14 @@
 
         
         function createCustomPostText(info, link, template) {
-            let postText = template || `PR Amazonで{商品名}が{価格}で販売中。\n{リンク}`;
+            let postText = template || `{商品名}\n詳細・最新価格はこちら⇒⇒\n{リンク}`;
             
             postText = postText.replace(/\{商品名\}/g, info.title);
             
-            // 価格がない場合は価格部分を削除
+            // 価格・割引・評価を置換（テンプレートに含まれている場合のみ）
             if (info.price) {
                 postText = postText.replace(/\{価格\}/g, info.price);
             } else {
-                // "が{価格}で" → "を"に置換
-                postText = postText.replace(/が\{価格\}で/g, 'を');
-                // 残った{価格}を削除
                 postText = postText.replace(/\{価格\}/g, '');
             }
             
