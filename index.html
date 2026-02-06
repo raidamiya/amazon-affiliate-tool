@@ -615,7 +615,7 @@
             <h1>
                 🐦 X アフィリエイト投稿ツール 
                 <span style="background: #10a37f; padding: 3px 8px; border-radius: 4px; font-size: 12px;">⚡ Workers版</span>
-                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.3</span>
+                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.4</span>
             </h1>
             <p>高精度な価格取得 - Cloudflare Workers経由 | <a href="#version-history" style="color: white; text-decoration: underline; opacity: 0.9;">更新履歴</a></p>
         </div>
@@ -2643,41 +2643,93 @@
             }
             
             try {
-                console.log('=== Workers版 商品情報取得 ===');
+                console.log('=== CORSプロキシ版 商品情報取得 ===');
                 console.log('URL:', url);
                 console.log('ASIN:', asin);
                 
-                // Cloudflare Workersで商品情報を取得
-                const response = await fetch(WORKER_URL, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({ url: url })
-                });
+                // CORSプロキシで商品ページを取得
+                const productUrl = `https://www.amazon.co.jp/dp/${asin}`;
+                const html = await fetchWithProxy(productUrl);
                 
-                if (!response.ok) {
-                    throw new Error(`Worker error: ${response.status}`);
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, 'text/html');
+                
+                // タイトル取得
+                let title = '';
+                const titleSelectors = ['#productTitle', '#title', 'h1.product-title'];
+                for (const selector of titleSelectors) {
+                    const elem = doc.querySelector(selector);
+                    if (elem && elem.textContent.trim()) {
+                        title = elem.textContent.trim();
+                        break;
+                    }
                 }
                 
-                const data = await response.json();
+                // 価格取得
+                let price = '';
                 
-                console.log('Worker レスポンス:', data);
-                console.log('タイトル:', data.title);
-                console.log('価格:', data.price || '取得失敗');
-                console.log('評価:', data.rating || 'なし');
-                console.log('割引:', data.discount || 'なし');
+                // 方法1: .a-price .a-offscreen
+                const priceOffscreen = doc.querySelector('.a-price .a-offscreen');
+                if (priceOffscreen) {
+                    const text = priceOffscreen.textContent.trim();
+                    const match = text.match(/[\d,]+/);
+                    if (match) {
+                        const numValue = parseInt(match[0].replace(/,/g, ''));
+                        if (numValue >= 100 && numValue < 10000000) {
+                            price = numValue + '円';
+                        }
+                    }
+                }
+                
+                // 方法2: .a-price-whole
+                if (!price) {
+                    const priceWhole = doc.querySelector('.a-price-whole');
+                    if (priceWhole) {
+                        const text = priceWhole.textContent.replace(/[,.\s]/g, '');
+                        const numValue = parseInt(text);
+                        if (numValue >= 100 && numValue < 10000000) {
+                            price = numValue + '円';
+                        }
+                    }
+                }
+                
+                // 評価取得
+                let rating = '';
+                const ratingElem = doc.querySelector('.a-icon-star .a-icon-alt, #acrPopover .a-icon-alt');
+                if (ratingElem) {
+                    const text = ratingElem.textContent.trim();
+                    const match = text.match(/([\d.]+)/);
+                    if (match) {
+                        rating = `★${match[1]}`;
+                    }
+                }
+                
+                // 割引取得
+                let discount = '';
+                const discountElem = doc.querySelector('.savingsPercentage, .a-size-large.a-color-price');
+                if (discountElem) {
+                    const text = discountElem.textContent.trim();
+                    const match = text.match(/(\d+)%/);
+                    if (match) {
+                        discount = `${match[1]}%OFF`;
+                    }
+                }
+                
+                console.log('タイトル:', title);
+                console.log('価格:', price || '取得失敗');
+                console.log('評価:', rating || 'なし');
+                console.log('割引:', discount || 'なし');
                 
                 return {
-                    title: data.title ? data.title.substring(0, 120) : '',
-                    price: data.price || '',
-                    rating: data.rating || '',
-                    discount: data.discount || '',
-                    asin: data.asin || asin
+                    title: title ? title.substring(0, 120) : '',
+                    price: price || '',
+                    rating: rating || '',
+                    discount: discount || '',
+                    asin: asin
                 };
                 
             } catch (error) {
-                console.error('Worker fetch error:', error);
+                console.error('CORSプロキシ fetch error:', error);
                 throw error;
             }
         }
@@ -3673,6 +3725,25 @@
         
         <div style="margin-bottom: 30px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+        <div style="margin-bottom: 30px;">
+            <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
+                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.4</span>
+                <span style="color: #666; font-size: 14px;">2026-02-07 - 最新版</span>
+            </div>
+            <div style="background: #f7f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6b6b;">
+                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🎯 URL指定タブ完全修正版</h3>
+                <ul style="margin-left: 20px; color: #666; line-height: 1.8;">
+                    <li>✅ <strong>CORSプロキシ対応</strong> - URL指定タブでもCORSプロキシ経由で商品情報を取得</li>
+                    <li>✅ <strong>Workers依存を削除</strong> - AmazonのBot対策をCORSプロキシで回避</li>
+                    <li>✅ <strong>商品名取得成功</strong> - 人気ワードタブと同じ取得方法で統一</li>
+                    <li>✅ <strong>全タブ統一</strong> - URL指定/人気ワード/価格取得強化/ランキング全て同じ方法に</li>
+                </ul>
+                <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 6px;">
+                    <strong style="color: #155724;">🎉 ついに解決:</strong> URL指定タブで商品名が取得できるようになりました！
+                </div>
+            </div>
+        </div>
+        
                 <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.3</span>
                 <span style="color: #666; font-size: 14px;">2026-02-07 - 最新版</span>
             </div>
@@ -3762,7 +3833,7 @@
         <div style="margin-top: 30px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #1d9bf0;">
             <h3 style="color: #1d9bf0; font-size: 16px; margin-bottom: 10px;">💡 おすすめバージョン</h3>
             <p style="color: #666; line-height: 1.6; margin: 0;">
-                <strong>v2.3（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
+                <strong>v2.4（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
                 旧版（v2.0, v2.1）を使用中の場合は、今すぐv2.3にアップグレードすることを推奨します。
             </p>
         </div>
