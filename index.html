@@ -3875,7 +3875,7 @@ ${productDetails}
         }
         
         async function callGeminiAPI(apiKey, prompt) {
-            const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+            const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
             
             const requestData = {
                 contents: [{
@@ -3896,14 +3896,14 @@ ${productDetails}
             
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Gemini APIエラー:', errorText);
+                console.error('Gemini API error:', errorText);
                 throw new Error(`Gemini API error: ${response.status}`);
             }
             
             const data = await response.json();
             
             if (!data.candidates || data.candidates.length === 0) {
-                throw new Error('Geminiから応答がありませんでした');
+                throw new Error('No response from Gemini API');
             }
             
             const generatedText = data.candidates[0].content.parts
@@ -3912,7 +3912,7 @@ ${productDetails}
                 .trim();
             
             if (!generatedText) {
-                throw new Error('生成されたテキストが空です');
+                throw new Error('Generated text is empty');
             }
             
             return generatedText;
@@ -3933,28 +3933,28 @@ ${productDetails}
             const response = await fetch(grokUrl, {
                 method: 'POST',
                 headers: {
-                    'Content-Type': 'application/json',
-                    'Authorization': `Bearer ${apiKey}`
+                    'Content-Type': 'application/json; charset=utf-8',
+                    'Authorization': 'Bearer ' + apiKey
                 },
                 body: JSON.stringify(requestData)
             });
             
             if (!response.ok) {
                 const errorText = await response.text();
-                console.error('Grok APIエラー:', errorText);
+                console.error('Grok API error:', errorText);
                 throw new Error(`Grok API error: ${response.status}`);
             }
             
             const data = await response.json();
             
             if (!data.choices || data.choices.length === 0) {
-                throw new Error('Grokから応答がありませんでした');
+                throw new Error('No response from Grok API');
             }
             
             const generatedText = data.choices[0].message.content.trim();
             
             if (!generatedText) {
-                throw new Error('生成されたテキストが空です');
+                throw new Error('Generated text is empty');
             }
             
             return generatedText;
