@@ -3928,7 +3928,11 @@
                 })
             });
             
-            if (!res.ok) throw new Error('Grok error: ' + res.status);
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error('Grok API error:', errorText);
+                throw new Error('Grok error: ' + res.status);
+            }
             
             const json = await res.json();
             return json.choices[0].message.content.trim();
@@ -4093,16 +4097,16 @@
                 <span style="color: #666; font-size: 14px;">2026-02-07 - 最新版</span>
             </div>
             <div style="background: #f7f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6b6b;">
-                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🔧 Grokモデル変更版</h3>
+                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🔧 Grokモデル変更版（400エラー対応）</h3>
                 <ul style="margin-left: 20px; color: #666; line-height: 1.8;">
                     <li>✅ <strong>grok-beta使用</strong> - より互換性の高いモデルに変更</li>
-                    <li>✅ <strong>400エラー解決</strong> - grok-4からgrok-betaへ変更で対応</li>
-                    <li>✅ <strong>プロンプト完全英語化</strong> - ISO-8859-1完全対応</li>
+                    <li>✅ <strong>エラーログ詳細化</strong> - APIエラーの内容を表示</li>
+                    <li>✅ <strong>ISO-8859-1完全対応</strong> - プロンプト英語化で解決済み</li>
                     <li>✅ <strong>Gemini 2.0 Flash対応</strong> - v1 API使用</li>
                     <li>✅ <strong>出力は日本語</strong> - AIは日本語で宣伝文を生成</li>
                 </ul>
                 <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 6px;">
-                    <strong style="color: #856404;">💡 変更理由:</strong> grok-4は一部のアカウントで利用不可のため、grok-betaに変更
+                    <strong style="color: #856404;">💡 変更理由:</strong> grok-4は一部アカウントで400エラー → grok-betaに変更
                 </div>
             </div>
         </div>
