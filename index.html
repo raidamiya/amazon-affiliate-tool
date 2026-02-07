@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X アフィリエイト投稿ツール（Workers版） v5.1</title>
+    <title>X アフィリエイト投稿ツール（Workers版） v5.0</title>
 
     <style>
         * {
@@ -239,7 +239,7 @@
             <h1>
                 🐦 X アフィリエイト投稿ツール
                 <span style="background:#10a37f;padding:3px 8px;border-radius:4px;font-size:12px;">Workers版</span>
-                <span style="background:#ff6b6b;padding:3px 8px;border-radius:4px;font-size:12px;margin-left:5px;">v5.1</span>
+                <span style="background:#ff6b6b;padding:3px 8px;border-radius:4px;font-size:12px;margin-left:5px;">v5.0</span>
             </h1>
             <p>高精度な価格取得 × AI宣伝文生成 × 自動投稿</p>
         </div>
@@ -1488,27 +1488,38 @@ ${tags}`;
 
                 const allCandidates = [];
 
-                // RSS から ASIN & タイトル取得
                 for (const cat of amazonRSSCategories) {
                     const items = await getRankingFromRSS(cat.url, 20);
-                    allCandidates.push(...items);
+
+                    if (items && items.length > 0) {
+                        allCandidates.push(...items);
+                    } else {
+                        console.warn("カテゴリが空のためスキップ:", cat.url);
+                    }
                 }
 
                 console.log("RSS候補総数:", allCandidates.length);
 
-                // ランダムに 30件だけ詳細ページを取得
-                const selected = allCandidates.sort(() => Math.random() - 0.5).slice(0, 30);
+                const selected = allCandidates
+                    .sort(() => Math.random() - 0.5)
+                    .slice(0, 30);
 
                 const keywords = [];
 
                 for (const item of selected) {
+
+                    if (!item.asin) {
+                        console.warn("ASINなしアイテムをスキップ:", item);
+                        continue;
+                    }
+
                     const price = await getPriceFromDetailPage(item.asin);
 
                     if (price && price <= 1500) {
-                    const kw = extractKeywordFromTitle(item.title);
-                    if (kw && !keywords.includes(kw)) {
-                        keywords.push(kw);
-                    }
+                        const kw = extractKeywordFromTitle(item.title);
+                        if (kw && !keywords.includes(kw)) {
+                            keywords.push(kw);
+                        }
                     }
 
                     await new Promise(r => setTimeout(r, 1500));
@@ -1517,7 +1528,7 @@ ${tags}`;
                 console.log("キーワード抽出:", keywords.length);
 
                 return keywords.sort(() => Math.random() - 0.5).slice(0, 30);
-                }
+            }
             
         /* ============================================================
         🤖 AutoPosterManager v2.8（AI統合 × 完全自動化）
