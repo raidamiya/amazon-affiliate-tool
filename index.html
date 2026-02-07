@@ -1034,6 +1034,46 @@ ${shortUrl}
             };
         }
 
+            async function updateTrendingKeywords() {
+                const rssUrl = "https://www.amazon.co.jp/gp/rss/bestsellers/kitchen";
+                const items = await getRankingFromRSS(rssUrl, 30);
+
+                const keywords = items.map(item => item.title);
+                console.log("人気ワード更新:", keywords);
+
+                // UI に反映（必要ならここに書く）
+                return keywords;
+            }
+
+            async function detailedSearch(keyword) {
+                console.log("詳細検索開始:", keyword);
+
+                // Amazon検索URL
+                const searchUrl = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
+
+                // HTML取得
+                const html = await fetchWithProxy(searchUrl);
+
+                // ASIN抽出
+                const asinMatches = [...html.matchAll(/data-asin="([A-Z0-9]{10})"/g)];
+                const asinList = asinMatches.map(m => m[1]);
+
+                // タイトル抽出
+                const titleMatches = [...html.matchAll(/<img[^>]*alt="([^"]+)"[^>]*>/g)];
+                const titleList = titleMatches.map(m => m[1].trim());
+
+                const results = [];
+                for (let i = 0; i < asinList.length; i++) {
+                    results.push({
+                        asin: asinList[i],
+                        title: titleList[i] || "商品名不明"
+                    });
+                }
+
+                console.log("詳細検索結果:", results);
+                return results;
+            }
+
         /* ============================
            CORSプロキシでHTML取得
         ============================ */
