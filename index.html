@@ -615,7 +615,7 @@
             <h1>
                 🐦 X アフィリエイト投稿ツール 
                 <span style="background: #10a37f; padding: 3px 8px; border-radius: 4px; font-size: 12px;">⚡ Workers版</span>
-                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.5</span>
+                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.5.1</span>
             </h1>
             <p>高精度な価格取得 - Cloudflare Workers経由 | <a href="#version-history" style="color: white; text-decoration: underline; opacity: 0.9;">更新履歴</a></p>
         </div>
@@ -3875,7 +3875,7 @@ ${productDetails}
         }
         
         async function callGeminiAPI(apiKey, prompt) {
-            const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent';
+            const geminiUrl = 'https://generativelanguage.googleapis.com/v1/models/gemini-2.0-flash:generateContent';
             
             const requestData = {
                 contents: [{
@@ -3919,45 +3919,50 @@ ${productDetails}
         }
         
         async function callGrokAPI(apiKey, prompt) {
-            const grokUrl = 'https://api.x.ai/v1/chat/completions';
+            const url = 'https://api.x.ai/v1/chat/completions';
             
-            const requestData = {
+            const payload = {
                 messages: [{
                     role: "user",
                     content: prompt
                 }],
-                model: "grok-beta",
+                model: "grok-4",
                 temperature: 0.9
             };
             
-            const response = await fetch(grokUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json; charset=utf-8',
-                    'Authorization': 'Bearer ' + apiKey
-                },
-                body: JSON.stringify(requestData)
-            });
-            
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error('Grok API error:', errorText);
-                throw new Error(`Grok API error: ${response.status}`);
+            try {
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + apiKey
+                    },
+                    body: JSON.stringify(payload)
+                });
+                
+                if (!response.ok) {
+                    const err = await response.text();
+                    console.error('Grok API error:', err);
+                    throw new Error('Grok API error: ' + response.status);
+                }
+                
+                const data = await response.json();
+                
+                if (!data.choices || data.choices.length === 0) {
+                    throw new Error('No response from Grok');
+                }
+                
+                const text = data.choices[0].message.content.trim();
+                
+                if (!text) {
+                    throw new Error('Empty response');
+                }
+                
+                return text;
+            } catch (error) {
+                console.error('Grok error:', error);
+                throw error;
             }
-            
-            const data = await response.json();
-            
-            if (!data.choices || data.choices.length === 0) {
-                throw new Error('No response from Grok API');
-            }
-            
-            const generatedText = data.choices[0].message.content.trim();
-            
-            if (!generatedText) {
-                throw new Error('Generated text is empty');
-            }
-            
-            return generatedText;
         }
         
         async function regenerateAIPost() {
@@ -4115,20 +4120,20 @@ ${productDetails}
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
         <div style="margin-bottom: 30px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.5</span>
+                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.5.1</span>
                 <span style="color: #666; font-size: 14px;">2026-02-07 - 最新版</span>
             </div>
             <div style="background: #f7f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6b6b;">
-                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🤖 AI統合版 + 修正版</h3>
+                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🔧 API修正版</h3>
                 <ul style="margin-left: 20px; color: #666; line-height: 1.8;">
-                    <li>✅ <strong>Gemini & Grok AI統合</strong> - 2つのAIから選択して宣伝文を自動生成</li>
-                    <li>✅ <strong>{URL}変数に対応</strong> - テンプレート内で{URL}も使用可能に</li>
-                    <li>✅ <strong>APIキー入力式</strong> - セキュリティ向上（コード内にAPIキーを保存しない）</li>
-                    <li>✅ <strong>再生成機能</strong> - 満足いくまで何度でも生成可能</li>
-                    <li>✅ <strong>構文エラー修正</strong> - タブ切り替え、ボタン動作を修正</li>
+                    <li>✅ <strong>Gemini API v1に変更</strong> - v1betaから安定版v1へ移行</li>
+                    <li>✅ <strong>Gemini 2.0 Flash使用</strong> - 最新の高速モデルに変更</li>
+                    <li>✅ <strong>Grok 4使用</strong> - 最新のGrokモデルに変更</li>
+                    <li>✅ <strong>ISO-8859-1エラー修正</strong> - Grok APIのヘッダーエラーを完全解決</li>
+                    <li>✅ <strong>日本語エラー排除</strong> - すべてのAPIエラーメッセージを英語化</li>
                 </ul>
-                <div style="margin-top: 10px; padding: 10px; background: #e8f5e9; border-radius: 6px;">
-                    <strong style="color: #2e7d32;">🎉 ついに実現:</strong> AIが自動で魅力的な宣伝文を作成！
+                <div style="margin-top: 10px; padding: 10px; background: #d1ecf1; border-radius: 6px;">
+                    <strong style="color: #0c5460;">🎯 修正完了:</strong> Gemini & Grok両方が正常に動作！
                 </div>
             </div>
         </div>
@@ -4222,7 +4227,7 @@ ${productDetails}
         <div style="margin-top: 30px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #1d9bf0;">
             <h3 style="color: #1d9bf0; font-size: 16px; margin-bottom: 10px;">💡 おすすめバージョン</h3>
             <p style="color: #666; line-height: 1.6; margin: 0;">
-                <strong>v2.5（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
+                <strong>v2.5.1（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
                 旧版（v2.0, v2.1）を使用中の場合は、今すぐv2.3にアップグレードすることを推奨します。
             </p>
         </div>
