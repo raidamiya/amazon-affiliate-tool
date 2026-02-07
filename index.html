@@ -1441,13 +1441,23 @@ ${tags}`;
             ];
 
             /* ============================
-            v4.0 RSS → ASIN & タイトル取得
+            v5.0 RSS → ASIN & タイトル取得
             ============================ */
             async function getRankingFromRSS(rssUrl, maxItems = 20) {
+                console.log("RSS取得開始:", rssUrl);
+
+                // Workers に RSS を送る
                 const data = await fetchWithProxy({
                     url: rssUrl,
                     mode: "rss"
                 });
+
+                console.log("RSS items:", data.items);
+
+                if (!data.items || data.items.length === 0) {
+                    console.warn("RSSからアイテムが取得できませんでした:", rssUrl);
+                    return [];
+                }
 
                 return data.items.slice(0, maxItems);
             }
