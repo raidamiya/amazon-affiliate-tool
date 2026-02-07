@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X アフィリエイト投稿ツール（Workers版） v5.0</title>
+    <title>X アフィリエイト投稿ツール（Workers版） v5.1</title>
 
     <style>
         * {
@@ -239,7 +239,7 @@
             <h1>
                 🐦 X アフィリエイト投稿ツール
                 <span style="background:#10a37f;padding:3px 8px;border-radius:4px;font-size:12px;">Workers版</span>
-                <span style="background:#ff6b6b;padding:3px 8px;border-radius:4px;font-size:12px;margin-left:5px;">v5.0</span>
+                <span style="background:#ff6b6b;padding:3px 8px;border-radius:4px;font-size:12px;margin-left:5px;">v5.1</span>
             </h1>
             <p>高精度な価格取得 × AI宣伝文生成 × 自動投稿</p>
         </div>
@@ -1423,12 +1423,21 @@ ${tags}`;
                     return null;
                 }
 
-                if (!data.price) {
+                // Workers は price を ""（空文字）で返すことがある
+                if (!data.price || data.price.trim() === "") {
                     console.warn("価格なし:", asin);
                     return null;
                 }
 
-                return data.price;
+                // "1500円" → 1500 に変換
+                const numeric = parseInt(data.price.replace(/[^\d]/g, ""), 10);
+
+                if (isNaN(numeric)) {
+                    console.warn("価格パース失敗:", asin);
+                    return null;
+                }
+
+                return numeric;
             }
 
             /* ============================
