@@ -1046,21 +1046,29 @@ ${shortUrl}
 
 
 
-        async function fetchWithProxy(body) {
-            const proxyUrl = 'https://amazon-scraping-proxy.carpe-diem-miya.workers.dev';
+            /* ============================
+            fetchWithProxy v5.0（Workers対応）
+            ============================ */
+            async function fetchWithProxy(body) {
+                const proxyUrl = "https://amazon-scraping-proxy.carpe-diem-miya.workers.dev";
 
-            const response = await fetch(proxyUrl, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(body)   // ← ここが重要
-        });
+                console.log("fetchWithProxy body:", body);
 
-        if (!response.ok) {
-            throw new Error("Workers fetch failed: " + response.status);
-        }
+                const response = await fetch(proxyUrl, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify(body)
+                });
 
-        return await response.text();
-        }
+                console.log("fetchWithProxy status:", response.status);
+
+                if (!response.ok) {
+                    throw new Error("Workers fetch failed: " + response.status);
+                }
+
+                // Workers は JSON を返すので text() ではなく json() を使う
+                return await response.json();
+            }
 
 
         /* ============================
