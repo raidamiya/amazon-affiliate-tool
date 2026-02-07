@@ -251,6 +251,7 @@
             <button class="tab" onclick="switchTab('ranking')">📊 ランキング</button>
             <button class="tab" onclick="switchTab('auto')">🤖 自動投稿</button>
             <button class="tab" onclick="switchTab('ai')">✨ AI宣伝文</button>
+           
         </div>
 
         <!-- ========================= -->
@@ -262,7 +263,7 @@
                 <label>📦 Amazon商品URL</label>
                 <input type="url" id="amazonUrl" placeholder="https://www.amazon.co.jp/dp/B0XXXXXXXXX">
             </div>
-
+ <button id="debug-btn" style="margin-left:10px; background:#444; color:#fff;">  🔍 デバッグ（HTML取得）</button>
             <div class="form-group">
                 <label>🏷️ アソシエイトタグ</label>
                 <input type="text" id="tag" placeholder="yourname-22">
@@ -1548,6 +1549,38 @@ ${tags}`;
                     .sort(() => Math.random() - 0.5)
                     .slice(0, 30);
             }
+
+
+            document.getElementById("debug-btn").addEventListener("click", async () => {
+    const testUrl = document.getElementById("amazonUrl")?.value;
+
+    if (!testUrl) {
+        alert("デバッグ対象の URL を入力してください（例: https://www.amazon.co.jp/dp/B0XXXXXXX）");
+        return;
+    }
+
+    console.log("=== DEBUG MODE START ===");
+    console.log("対象URL:", testUrl);
+
+    try {
+        const data = await fetchWithProxy({
+            url: testUrl,
+            mode: "debug"
+        });
+
+        console.log("=== Workers DEBUG Response ===");
+        console.log("ステータス:", data.status);
+        console.log("HTML 長さ:", data.html_length);
+        console.log("HTML 本文（最初の500文字）:");
+        console.log(data.html?.slice(0, 500));
+
+        alert("デバッグ完了。Console に HTML の内容を出力しました。");
+
+    } catch (e) {
+        console.error("DEBUG ERROR:", e);
+        alert("デバッグ中にエラーが発生しました。Console を確認してください。");
+    }
+});
             
         /* ============================================================
         🤖 AutoPosterManager v2.8（AI統合 × 完全自動化）
