@@ -1088,10 +1088,15 @@ ${shortUrl}
             /* ============================
             fetchWithProxy v5.0（Workers対応）
             ============================ */
-            async function fetchWithProxy(body) {
+            async function fetchWithProxy(input) {
                 const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev";
 
-                console.log("fetchWithProxy URL:", body);
+                // input が文字列ならオブジェクトに変換
+                const body = typeof input === "string"
+                    ? { url: input }
+                    : input;
+
+                console.log("fetchWithProxy body:", body);
 
                 const response = await fetch(proxyUrl, {
                     method: "POST",
@@ -1103,8 +1108,7 @@ ${shortUrl}
                     throw new Error("Proxy fetch failed: " + response.status);
                 }
 
-                const data = await response.json();
-                return data;   // ← JSON を返す
+                return await response.json();
             }
 
 
