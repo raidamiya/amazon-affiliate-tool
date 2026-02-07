@@ -1411,7 +1411,7 @@ ${tags}`;
             v3.4 詳細ページ → 価格取得
             ============================ */
             async function getPriceFromDetailPage(asin) {
-            const jsonText = await fetchWithProxy({
+            const detail = await fetchWithProxy({
                 url: `https://www.amazon.co.jp/dp/${asin}`,
                 mode: "product"
             });
@@ -1444,15 +1444,13 @@ ${tags}`;
             v4.0 RSS → ASIN & タイトル取得
             ============================ */
             async function getRankingFromRSS(rssUrl, maxItems = 20) {
-                const jsonText = await fetchWithProxy({
+                const data = await fetchWithProxy({
                     url: rssUrl,
                     mode: "rss"
                 });
 
-                const data = JSON.parse(jsonText);
-
                 return data.items.slice(0, maxItems);
-                }
+            }
 
 
             /* ============================
