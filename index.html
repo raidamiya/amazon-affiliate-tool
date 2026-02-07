@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X アフィリエイト投稿ツール（Workers版） v5.11</title>
+    <title>X アフィリエイト投稿ツール（Workers版） v5.0</title>
 
     <style>
         * {
@@ -239,7 +239,7 @@
             <h1>
                 🐦 X アフィリエイト投稿ツール
                 <span style="background:#10a37f;padding:3px 8px;border-radius:4px;font-size:12px;">Workers版</span>
-                <span style="background:#ff6b6b;padding:3px 8px;border-radius:4px;font-size:12px;margin-left:5px;">v5.11</span>
+                <span style="background:#ff6b6b;padding:3px 8px;border-radius:4px;font-size:12px;margin-left:5px;">v5.0</span>
             </h1>
             <p>高精度な価格取得 × AI宣伝文生成 × 自動投稿</p>
         </div>
@@ -1048,30 +1048,23 @@ ${shortUrl}
             /* ============================
             fetchWithProxy v5.0（Workers対応）
             ============================ */
-            async function fetchWithProxy(url) {
+            async function fetchWithProxy(body) {
                 const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev";
 
-                console.log("fetchWithProxy URL:", url);
+                console.log("fetchWithProxy URL:", body);
 
                 const response = await fetch(proxyUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        url: url,
-                        headers: {
-                            "User-Agent":
-                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
-                            "Accept":
-                                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-                            "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
-                        }
-                    })
+                    body: JSON.stringify(body)
                 });
 
-                if (!response.ok) throw new Error("Proxy fetch failed: " + response.status);
+                if (!response.ok) {
+                    throw new Error("Proxy fetch failed: " + response.status);
+                }
 
                 const data = await response.json();
-                return data.html;  // ← HTML を返す
+                return data;   // ← JSON を返す
             }
 
 
@@ -1974,4 +1967,3 @@ ${tags}`;
     </div>
 </body>
 </html>
-
