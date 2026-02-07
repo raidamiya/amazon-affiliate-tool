@@ -362,7 +362,7 @@
                 <label>⚡ 商品検索キーワード</label>
                 <div class="search-controls">
                     <input type="search" id="detailedQuery" placeholder="商品名やキーワードを入力">
-                    <button class="btn btn-primary" onclick="detailedSearch()">⚡ 検索</button>
+                    <button class="btn btn-primary" onclick="detailedSearch(document.getElementById('detailedQuery').value)">⚡ 検索</button>
                 </div>
             </div>
 
@@ -1046,19 +1046,26 @@ ${shortUrl}
             }
 
             async function detailedSearch(keyword) {
+                if (!keyword) {
+                    console.warn("detailedSearch: keyword が未入力です");
+                    document.getElementById("error-detailed").textContent = "キーワードを入力してください";
+                    return;
+                }
+
                 console.log("詳細検索開始:", keyword);
 
-                // Amazon検索URL
                 const searchUrl = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
+                const data = await fetchWithProxy({ url: searchUrl });
 
-                // HTML取得
-                const html = await fetchWithProxy(searchUrl);
+                const html = data.html;
+                if (!html) {
+                    console.warn("詳細検索: HTML が取得できませんでした");
+                    return [];
+                }
 
-                // ASIN抽出
                 const asinMatches = [...html.matchAll(/data-asin="([A-Z0-9]{10})"/g)];
                 const asinList = asinMatches.map(m => m[1]);
 
-                // タイトル抽出
                 const titleMatches = [...html.matchAll(/<img[^>]*alt="([^"]+)"[^>]*>/g)];
                 const titleList = titleMatches.map(m => m[1].trim());
 
