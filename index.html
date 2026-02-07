@@ -615,7 +615,7 @@
             <h1>
                 🐦 X アフィリエイト投稿ツール 
                 <span style="background: #10a37f; padding: 3px 8px; border-radius: 4px; font-size: 12px;">⚡ Workers版</span>
-                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.4</span>
+                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.5</span>
             </h1>
             <p>高精度な価格取得 - Cloudflare Workers経由 | <a href="#version-history" style="color: white; text-decoration: underline; opacity: 0.9;">更新履歴</a></p>
         </div>
@@ -626,6 +626,7 @@
             <button class="tab" onclick="switchTab('detailed')">⚡ 価格取得強化</button>
             <button class="tab" onclick="switchTab('ranking')">📊 ランキング</button>
             <button class="tab" onclick="switchTab('auto')">🤖 自動投稿</button>
+            <button class="tab" onclick="switchTab('ai')">🤖 AI宣伝文</button>
         </div>
         
         <!-- URL指定タブ -->
@@ -1131,11 +1132,88 @@
         </div>
     </div>
     
+    <!-- AI宣伝文タブ -->
+    <div id="ai-tab" class="tab-content">
+        <div class="info-box" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white;">
+            <strong>🤖 Gemini AIで自動生成！</strong><br>
+            商品情報を入力すると、AIが魅力的な宣伝文を自動生成します。
+        </div>
+        
+        <div class="form-group">
+            <label>🔑 Gemini API Key</label>
+            <input type="password" id="gemini-api-key" placeholder="AIzaSy..." value="AIzaSyCTtsipNRqOj_0Ab9mFwH8VJs5nVy6C1wI">
+            <small style="color: #666; font-size: 12px;">
+                💡 <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #1d9bf0;">Google AI Studioで無料取得</a>
+            </small>
+        </div>
+        
+        <div class="form-group">
+            <label>📦 Amazon商品URL</label>
+            <input type="url" id="ai-product-url" placeholder="https://www.amazon.co.jp/dp/B0XXXXXXXXX">
+        </div>
+        
+        <div class="form-group">
+            <label>🏷️ アソシエイトタグ</label>
+            <input type="text" id="tag-ai" placeholder="yourname-22" value="">
+        </div>
+        
+        <button class="btn btn-primary" onclick="generateAIPost()" id="generate-ai-btn">
+            ✨ AI宣伝文を生成
+        </button>
+        
+        <div class="loading-inline" id="loading-ai">
+            <div class="spinner-small"></div>
+            <span>Gemini AIが宣伝文を生成中...</span>
+        </div>
+        
+        <div class="error" id="error-ai"></div>
+        
+        <div id="ai-result-container" style="display: none; margin-top: 20px;">
+            <div class="form-group">
+                <label>📝 生成された宣伝文（編集可能）</label>
+                <textarea id="ai-generated-text" style="min-height: 200px;"></textarea>
+            </div>
+            
+            <div id="charCount-ai" class="char-count"></div>
+            
+            <div class="button-group">
+                <button class="btn btn-success" onclick="postToX('ai')">
+                    🐦 Xで投稿する
+                </button>
+                <button class="btn btn-outline" onclick="copyText('ai')">
+                    📋 コピー
+                </button>
+                <button class="btn btn-secondary" onclick="regenerateAIPost()">
+                    🔄 再生成
+                </button>
+            </div>
+        </div>
+        
+        <div class="tips">
+            <strong>💡 使い方：</strong><br>
+            1. <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #1d9bf0;">Google AI Studio</a>でGemini APIキーを無料取得<br>
+            2. APIキーを入力（自動で保存されます）<br>
+            3. Amazon商品URLとアソシエイトタグを入力<br>
+            4. 「AI宣伝文を生成」をクリック！<br>
+            5. 生成された文章を編集してXに投稿<br><br>
+            <strong>🎯 Gemini AIの特徴：</strong><br>
+            • 商品の魅力を自動で分析<br>
+            • 絵文字を効果的に配置<br>
+            • クリック率の高いキャッチコピー<br>
+            • 280字以内に自動調整<br><br>
+            <strong>⚠️ 注意事項：</strong><br>
+            • APIキーは安全に保管してください<br>
+            • 生成された文章は必ず確認・編集してください<br>
+            • 不適切な表現がないか確認してください
+        </div>
+    </div>
+    
     <script>
         let currentPostText = {
             manual: '',
             search: '',
             ranking: ''
+            ai: ''
         };
         
         let currentProducts = {
@@ -1232,6 +1310,18 @@
                 content.classList.remove('active');
             });
             document.getElementById(tabName + '-tab').classList.add('active');
+            
+            // AIタブの場合、APIキーとタグを復元
+            if (tabName === 'ai') {
+                const savedApiKey = localStorage.getItem('geminiApiKey');
+                const savedTag = localStorage.getItem('amazonTag');
+                if (savedApiKey) {
+                    document.getElementById('gemini-api-key').value = savedApiKey;
+                }
+                if (savedTag) {
+                    document.getElementById('tag-ai').value = savedTag;
+                }
+            }
         }
         
         function updateCategoryUrl() {
@@ -2962,11 +3052,17 @@
 
         
         function createCustomPostText(info, link, template) {
+            console.log('=== createCustomPostText 開始 ===');
+            console.log('商品タイトル:', info.title);
+            console.log('アフィリエイトリンク:', link);
+            
             let postText = template || `{商品名}\n詳細・最新価格はこちら⇒⇒\n{リンク}`;
             
-            postText = postText.replace(/\{商品名\}/g, info.title);
+            // 商品名を置換
+            const originalTitle = info.title;
+            postText = postText.replace(/\{商品名\}/g, originalTitle);
             
-            // 価格・割引・評価を置換（テンプレートに含まれている場合のみ）
+            // 価格・割引・評価を置換
             if (info.price) {
                 postText = postText.replace(/\{価格\}/g, info.price);
             } else {
@@ -2975,9 +3071,12 @@
             
             postText = postText.replace(/\{割引\}/g, info.discount || '');
             postText = postText.replace(/\{評価\}/g, info.rating || '');
-            postText = postText.replace(/\{リンク\}/g, link);
             
-            // ハッシュタグを追加
+            // ✅ {リンク}と{URL}の両方に対応
+            postText = postText.replace(/\{リンク\}/g, link);
+            postText = postText.replace(/\{URL\}/g, link);
+            
+            // ハッシュタグを生成
             const hashtags = generateHashtags(info);
             postText = postText.replace(/\{タグ\}/g, hashtags);
             
@@ -2988,7 +3087,83 @@
             
             postText = postText.replace(/\n\s*\n/g, '\n').trim();
             
-            return postText;
+            console.log('初回生成:', postText.length, '文字');
+            
+            // 文字数チェック（280文字制限）
+            if (postText.length <= 280) {
+                console.log(`✅ OK: ${postText.length}/280文字`);
+                return postText;
+            }
+            
+            console.log(`🚨 超過: ${postText.length}/280文字 - 調整開始`);
+            
+            // Step 1: ハッシュタグを段階的に削減
+            const allTags = hashtags.split(' ').filter(tag => tag.startsWith('#'));
+            
+            const tagPatterns = [
+                allTags.filter(tag => !['#PR', '#AD'].includes(tag)).join(' '),
+                allTags.filter(tag => ['#Amazon', '#アマゾン', '#セール', '#激安', '#お得情報'].includes(tag)).join(' '),
+                allTags.filter(tag => ['#Amazon', '#セール'].includes(tag)).join(' '),
+                '#Amazon',
+                ''
+            ];
+            
+            for (let i = 0; i < tagPatterns.length; i++) {
+                let testText = template || `{商品名}\n詳細・最新価格はこちら⇒⇒\n{リンク}`;
+                testText = testText.replace(/\{商品名\}/g, originalTitle);
+                testText = testText.replace(/\{リンク\}/g, link);
+                testText = testText.replace(/\{URL\}/g, link);
+                testText = testText.replace(/\{価格\}/g, info.price || '');
+                testText = testText.replace(/\{割引\}/g, info.discount || '');
+                testText = testText.replace(/\{評価\}/g, info.rating || '');
+                testText = testText.replace(/\{タグ\}/g, tagPatterns[i]);
+                
+                if (!template || !template.includes('{タグ}')) {
+                    testText += tagPatterns[i] ? '\n\n' + tagPatterns[i] : '';
+                }
+                
+                testText = testText.replace(/\n\s*\n/g, '\n').trim();
+                
+                console.log(`パターン${i + 1}: ${testText.length}文字`);
+                
+                if (testText.length <= 280) {
+                    console.log(`✅ ハッシュタグ削減成功`);
+                    return testText;
+                }
+            }
+            
+            // Step 2: 商品名を短縮
+            console.log('🚨 商品名を短縮');
+            
+            const titleLengths = [60, 50, 40, 30, 20, 15, 10];
+            
+            for (const maxLen of titleLengths) {
+                const shortTitle = originalTitle.substring(0, maxLen) + '...';
+                
+                let testText = template || `{商品名}\n詳細・最新価格はこちら⇒⇒\n{リンク}`;
+                testText = testText.replace(/\{商品名\}/g, shortTitle);
+                testText = testText.replace(/\{リンク\}/g, link);
+                testText = testText.replace(/\{URL\}/g, link);
+                testText = testText.replace(/\{価格\}/g, '');
+                testText = testText.replace(/\{割引\}/g, '');
+                testText = testText.replace(/\{評価\}/g, '');
+                testText = testText.replace(/\{タグ\}/g, '');
+                testText = testText.replace(/\n\s*\n/g, '\n').trim();
+                
+                console.log(`${maxLen}文字: ${testText.length}文字`);
+                
+                if (testText.length <= 280) {
+                    console.log(`✅ 短縮完了`);
+                    return testText;
+                }
+            }
+            
+            // 最終手段
+            const finalTitle = originalTitle.substring(0, 10) + '...';
+            let finalText = `${finalTitle}\n詳細・最新価格はこちら⇒⇒\n${link}`;
+            console.log(`🔴 最終: ${finalText.length}文字`);
+            
+            return finalText;
         }
         
         function updateCharCount(text, tab) {
@@ -3604,6 +3779,213 @@
         window.addEventListener('load', function() {
             autoPoster.loadSettings();
         });
+        
+        // ==========================================
+        // AI宣伝文生成関連の関数
+        // ==========================================
+        
+        let currentAIPrompt = '';
+        
+        async function generateAIPost() {
+            const apiKey = document.getElementById('gemini-api-key').value.trim();
+            const productUrl = document.getElementById('ai-product-url').value.trim();
+            const tag = document.getElementById('tag-ai').value.trim();
+            
+            if (!apiKey) {
+                showError('ai', 'Gemini APIキーを入力してください');
+                return;
+            }
+            
+            if (!productUrl) {
+                showError('ai', 'Amazon商品URLを入力してください');
+                return;
+            }
+            
+            if (!productUrl.includes('amazon.co.jp')) {
+                showError('ai', 'Amazon.co.jpのURLを入力してください');
+                return;
+            }
+            
+            if (!tag) {
+                showError('ai', 'アソシエイトタグを入力してください');
+                return;
+            }
+            
+            // APIキーとタグを保存
+            localStorage.setItem('geminiApiKey', apiKey);
+            localStorage.setItem('amazonTag', tag);
+            
+            hideError('ai');
+            document.getElementById('generate-ai-btn').disabled = true;
+            document.getElementById('loading-ai').classList.add('show');
+            document.getElementById('ai-result-container').style.display = 'none';
+            
+            try {
+                // 商品情報を取得
+                console.log('=== AI宣伝文生成: 商品情報取得開始 ===');
+                const productInfo = await fetchProductInfo(productUrl);
+                
+                console.log('商品情報:', productInfo);
+                
+                // タイトルがない場合はASINから生成
+                if (!productInfo.title) {
+                    productInfo.title = `Amazon商品 (ASIN: ${productInfo.asin})`;
+                }
+                
+                // アフィリエイトリンク生成
+                const affiliateLink = createAffiliateLink(productUrl, tag);
+                
+                // Gemini用のプロンプトを作成
+                const prompt = createGeminiPrompt(productInfo, affiliateLink);
+                currentAIPrompt = prompt;
+                
+                console.log('=== Gemini API呼び出し開始 ===');
+                
+                // Gemini APIを呼び出し
+                const generatedText = await callGeminiAPI(apiKey, prompt);
+                
+                console.log('生成されたテキスト:', generatedText);
+                
+                // 結果を表示
+                document.getElementById('ai-generated-text').value = generatedText;
+                currentPostText.ai = generatedText;
+                
+                document.getElementById('ai-result-container').style.display = 'block';
+                updateCharCount(generatedText, 'ai');
+                
+            } catch (error) {
+                console.error('AI生成エラー:', error);
+                showError('ai', 'AI生成に失敗しました: ' + error.message);
+            } finally {
+                document.getElementById('generate-ai-btn').disabled = false;
+                document.getElementById('loading-ai').classList.remove('show');
+            }
+        }
+        
+        function createGeminiPrompt(productInfo, affiliateLink) {
+            const title = productInfo.title;
+            const price = productInfo.price || '価格不明';
+            const rating = productInfo.rating || '';
+            const discount = productInfo.discount || '';
+            
+            let productDetails = `商品名: ${title}`;
+            if (price !== '価格不明') {
+                productDetails += `\n価格: ${price}`;
+            }
+            if (rating) {
+                productDetails += `\n評価: ${rating}`;
+            }
+            if (discount) {
+                productDetails += `\n割引: ${discount}`;
+            }
+            
+            return `あなたはX（旧Twitter）のマーケティング専門家です。以下の商品の魅力的な投稿文を作成してください。
+
+【商品情報】
+${productDetails}
+
+【条件】
+1. **280文字以内に厳守すること**（超えてはいけません）
+2. 商品の魅力を2-3個挙げること
+3. 絵文字を効果的に使うこと（3-5個）
+4. 「詳細・最新価格はこちら⇒⇒」という文言を必ず含めること
+5. ハッシュタグを2-4個含めること（#Amazon は必須）
+6. クリックしたくなるようなキャッチーな表現を使うこと
+7. 誇大広告にならないよう注意すること
+8. 箇条書きは✅を使うこと
+
+【出力形式】
+投稿文のみを出力してください。説明や前置きは不要です。
+
+【参考例】
+✨朝の準備が劇的に変わる！✨
+
+SALONIA ストレートアイロンで
+サロン級の仕上がりを自宅で実現💇‍♀️
+
+✅30秒で立ち上がる神速仕様⚡
+✅プロ仕様230℃でしっかりストレート
+✅2,000円台でこのクオリティは驚き！
+
+詳細・最新価格はこちら⇒⇒
+
+#Amazon #ヘアケア #買ってよかった`;
+        }
+        
+        async function callGeminiAPI(apiKey, prompt) {
+            const geminiUrl = 'https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-exp:generateContent';
+            
+            const requestData = {
+                contents: [{
+                    parts: [{
+                        text: prompt
+                    }],
+                    role: "user"
+                }],
+                generationConfig: {
+                    temperature: 0.9,
+                    maxOutputTokens: 1024,
+                }
+            };
+            
+            const response = await fetch(`${geminiUrl}?key=${apiKey}`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(requestData)
+            });
+            
+            if (!response.ok) {
+                const errorText = await response.text();
+                console.error('Gemini APIエラー:', errorText);
+                throw new Error(`Gemini API error: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            if (!data.candidates || data.candidates.length === 0) {
+                throw new Error('Geminiから応答がありませんでした');
+            }
+            
+            const generatedText = data.candidates[0].content.parts
+                .map(part => part.text)
+                .join('')
+                .trim();
+            
+            if (!generatedText) {
+                throw new Error('生成されたテキストが空です');
+            }
+            
+            return generatedText;
+        }
+        
+        async function regenerateAIPost() {
+            const apiKey = document.getElementById('gemini-api-key').value.trim();
+            
+            if (!apiKey || !currentAIPrompt) {
+                showError('ai', '最初に商品情報を入力してください');
+                return;
+            }
+            
+            hideError('ai');
+            document.getElementById('loading-ai').classList.add('show');
+            
+            try {
+                console.log('=== AI再生成 ===');
+                const generatedText = await callGeminiAPI(apiKey, currentAIPrompt);
+                
+                document.getElementById('ai-generated-text').value = generatedText;
+                currentPostText.ai = generatedText;
+                updateCharCount(generatedText, 'ai');
+                
+            } catch (error) {
+                console.error('AI再生成エラー:', error);
+                showError('ai', 'AI再生成に失敗しました: ' + error.message);
+            } finally {
+                document.getElementById('loading-ai').classList.remove('show');
+            }
+        }
     </script>
     
     <!--
@@ -3727,19 +4109,20 @@
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
         <div style="margin-bottom: 30px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.4</span>
+                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.5</span>
                 <span style="color: #666; font-size: 14px;">2026-02-07 - 最新版</span>
             </div>
             <div style="background: #f7f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6b6b;">
-                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🎯 URL指定タブ完全修正版</h3>
+                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🤖 Gemini AI統合版</h3>
                 <ul style="margin-left: 20px; color: #666; line-height: 1.8;">
-                    <li>✅ <strong>CORSプロキシ対応</strong> - URL指定タブでもCORSプロキシ経由で商品情報を取得</li>
-                    <li>✅ <strong>Workers依存を削除</strong> - AmazonのBot対策をCORSプロキシで回避</li>
-                    <li>✅ <strong>商品名取得成功</strong> - 人気ワードタブと同じ取得方法で統一</li>
-                    <li>✅ <strong>全タブ統一</strong> - URL指定/人気ワード/価格取得強化/ランキング全て同じ方法に</li>
+                    <li>✅ <strong>Gemini AI宣伝文生成</strong> - 商品情報から魅力的な投稿文を自動生成</li>
+                    <li>✅ <strong>URL指定タブに文字数調整機能</strong> - 280字制限に自動対応</li>
+                    <li>✅ <strong>{URL}変数に対応</strong> - テンプレート内で{URL}も使用可能に</li>
+                    <li>✅ <strong>AIプロンプト最適化</strong> - クリック率の高いキャッチコピーを生成</li>
+                    <li>✅ <strong>再生成機能</strong> - 満足いくまで何度でも生成可能</li>
                 </ul>
-                <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 6px;">
-                    <strong style="color: #155724;">🎉 ついに解決:</strong> URL指定タブで商品名が取得できるようになりました！
+                <div style="margin-top: 10px; padding: 10px; background: #e8f5e9; border-radius: 6px;">
+                    <strong style="color: #2e7d32;">🎉 ついに実現:</strong> AIが自動で魅力的な宣伝文を作成！
                 </div>
             </div>
         </div>
@@ -3833,7 +4216,7 @@
         <div style="margin-top: 30px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #1d9bf0;">
             <h3 style="color: #1d9bf0; font-size: 16px; margin-bottom: 10px;">💡 おすすめバージョン</h3>
             <p style="color: #666; line-height: 1.6; margin: 0;">
-                <strong>v2.4（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
+                <strong>v2.5（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
                 旧版（v2.0, v2.1）を使用中の場合は、今すぐv2.3にアップグレードすることを推奨します。
             </p>
         </div>
