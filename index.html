@@ -1077,9 +1077,15 @@ ${shortUrl}
                     });
                 }
 
-                console.log("詳細検索結果:", results);
-                renderDetailedResults(results);
-                return results;
+                // 🔥 ここで 10 件に絞る
+                const limited = results.slice(0, 10);
+
+                console.log("詳細検索結果（10件）:", limited);
+
+                // UI に描画
+                renderDetailedResults(limited);
+
+                return limited;
             }
 
 
