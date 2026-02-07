@@ -1411,16 +1411,19 @@ ${tags}`;
             v3.4 詳細ページ → 価格取得
             ============================ */
             async function getPriceFromDetailPage(asin) {
-            const detail = await fetchWithProxy({
-                url: `https://www.amazon.co.jp/dp/${asin}`,
-                mode: "product"
-            });
+                const detailUrl = `https://www.amazon.co.jp/dp/${asin}`;
 
-            const data = JSON.parse(jsonText);
-            if (!data.price) return null;
+                const data = await fetchWithProxy({
+                    url: detailUrl,
+                    mode: "product"
+                });
 
-            const num = parseInt(data.price.replace(/円/g, ""));
-            return num;
+                if (!data || !data.success) {
+                    console.warn("詳細ページ取得失敗:", asin);
+                    return null;
+                }
+
+                return data.price || null;
             }
 
             /* ============================
