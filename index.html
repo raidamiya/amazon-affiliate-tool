@@ -615,7 +615,7 @@
             <h1>
                 🐦 X アフィリエイト投稿ツール 
                 <span style="background: #10a37f; padding: 3px 8px; border-radius: 4px; font-size: 12px;">⚡ Workers版</span>
-                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.6.1</span>
+                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.6.2</span>
             </h1>
             <p>高精度な価格取得 - Cloudflare Workers経由 | <a href="#version-history" style="color: white; text-decoration: underline; opacity: 0.9;">更新履歴</a></p>
         </div>
@@ -4012,20 +4012,29 @@
             const json = await res.json();
             console.log('OpenRouter Response:', json);
             
-            if (!res.ok) {
-                console.error('OpenRouter API error:', json);
+            // エラーオブジェクトがある場合（ステータス200でも）
+            if (json.error) {
+                console.error('=== OpenRouter Error Details ===');
+                console.error('Error object:', json.error);
+                console.error('Full error:', JSON.stringify(json.error, null, 2));
                 
                 // エラーメッセージを取得
-                let errorMsg = 'OpenRouter error: ' + res.status;
-                if (json.error) {
-                    if (typeof json.error === 'string') {
-                        errorMsg += ' - ' + json.error;
-                    } else if (json.error.message) {
-                        errorMsg += ' - ' + json.error.message;
-                    }
+                let errorMsg = 'OpenRouter error';
+                if (typeof json.error === 'string') {
+                    errorMsg += ': ' + json.error;
+                } else if (json.error.message) {
+                    errorMsg += ': ' + json.error.message;
+                } else if (json.error.code) {
+                    errorMsg += ' (code: ' + json.error.code + ')';
                 }
                 
                 throw new Error(errorMsg);
+            }
+            
+            // HTTPエラー（ステータスコードが200-299以外）
+            if (!res.ok) {
+                console.error('OpenRouter HTTP error:', json);
+                throw new Error('OpenRouter HTTP error: ' + res.status);
             }
             
             // レスポンス構造を確認
@@ -4200,20 +4209,20 @@
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
         <div style="margin-bottom: 30px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.6.1</span>
+                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.6.2</span>
                 <span style="color: #666; font-size: 14px;">2026-02-07 - 最新版</span>
             </div>
             <div style="background: #f7f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6b6b;">
-                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🔧 OpenRouterデバッグ版</h3>
+                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🔍 OpenRouterエラー詳細版</h3>
                 <ul style="margin-left: 20px; color: #666; line-height: 1.8;">
-                    <li>✅ <strong>詳細ログ追加</strong> - APIレスポンス全体をコンソールに出力</li>
-                    <li>✅ <strong>エラーハンドリング強化</strong> - レスポンス構造を詳細チェック</li>
-                    <li>✅ <strong>エラーメッセージ改善</strong> - 具体的なエラー内容を表示</li>
-                    <li>✅ <strong>レスポンス検証</strong> - choices配列とmessage.contentを確認</li>
-                    <li>✅ <strong>デバッグ情報</strong> - モデル名・ステータスコードをログ出力</li>
+                    <li>✅ <strong>200エラー対応</strong> - ステータス200でもエラーチェック</li>
+                    <li>✅ <strong>エラー詳細出力</strong> - error.message, error.codeを表示</li>
+                    <li>✅ <strong>JSON整形出力</strong> - エラーオブジェクトを読みやすく表示</li>
+                    <li>✅ <strong>チェック順序変更</strong> - エラー → HTTPステータス → choices</li>
+                    <li>✅ <strong>デバッグ強化</strong> - 全エラーパターンに対応</li>
                 </ul>
-                <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 6px;">
-                    <strong style="color: #856404;">🔍 デバッグ:</strong> ブラウザコンソール(F12)でエラー詳細を確認可能
+                <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 6px;">
+                    <strong style="color: #155724;">🎯 修正:</strong> OpenRouterの200エラーを正しく検出・表示
                 </div>
             </div>
         </div>
@@ -4307,7 +4316,7 @@
         <div style="margin-top: 30px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #1d9bf0;">
             <h3 style="color: #1d9bf0; font-size: 16px; margin-bottom: 10px;">💡 おすすめバージョン</h3>
             <p style="color: #666; line-height: 1.6; margin: 0;">
-                <strong>v2.6.1（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
+                <strong>v2.6.2（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
                 旧版（v2.0, v2.1）を使用中の場合は、今すぐv2.3にアップグレードすることを推奨します。
             </p>
         </div>
