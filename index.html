@@ -1182,9 +1182,8 @@ ${shortUrl}
             fetchWithProxy v5.0（Workers対応）
             ============================ */
             async function fetchWithProxy(input) {
-                const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev";
+                const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev/"; // ← 末尾に / を追加
 
-                // 文字列なら { url: input } に変換
                 const body = typeof input === "string"
                     ? { url: input }
                     : input;
