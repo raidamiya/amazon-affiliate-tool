@@ -1360,7 +1360,7 @@ ${tags}`;
                     const price = await getPriceFromDetailPage(item.asin);
 
                     // ③ 価格フィルタ（〜1500円）
-                    if (price && price <= 1500) {
+                    if (typeof price === "number" && price <= 1500) {
                         const kw = extractKeywordFromTitle(item.title);
                         if (kw && !keywords.includes(kw)) {
                             keywords.push(kw);
@@ -1418,12 +1418,22 @@ ${tags}`;
                     mode: "product"
                 });
 
-                if (!data || !data.success) {
+                // Workers は title が取れなくても price が取れる場合がある
+                if (!data) {
                     console.warn("詳細ページ取得失敗:", asin);
                     return null;
                 }
 
-                return data.price || null;
+                // price が無い場合は null
+                if (!data.price) {
+                    console.warn("価格なし:", asin);
+                    return null;
+                }
+
+                // "1,580円" → 1580 に変換
+                const numeric = parseInt(data.price.replace(/[^\d]/g, ""), 10);
+
+                return numeric || null;
             }
 
             /* ============================
