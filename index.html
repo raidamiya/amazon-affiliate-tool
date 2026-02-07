@@ -1123,9 +1123,7 @@ ${shortUrl}
 
             async function generatePostText(product) {
                 const apiKey = document.getElementById("ai-api-key").value;
-                if (!apiKey) {
-                    throw new Error("APIキーが設定されていません");
-                }
+                if (!apiKey) throw new Error("APIキーが設定されていません");
 
                 const prompt = `
             以下の商品をTwitter向けに魅力的に紹介する文章を作ってください。
@@ -1145,17 +1143,12 @@ ${shortUrl}
             ・最後にAmazonリンクを付ける
             `;
 
-                const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev/openai";
+
+                const response = await fetch(proxyUrl, {
                     method: "POST",
-                    headers: {
-                        "Content-Type": "application/json",
-                        "Authorization": `Bearer ${apiKey}`
-                    },
-                    body: JSON.stringify({
-                        model: "gpt-4o-mini",
-                        messages: [{ role: "user", content: prompt }],
-                        max_tokens: 200
-                    })
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ apiKey, prompt })
                 });
 
                 const data = await response.json();
@@ -1163,7 +1156,6 @@ ${shortUrl}
 
                 if (!text) throw new Error("AI生成に失敗しました");
 
-                // Amazonリンク生成
                 const tag = document.getElementById("tag-detailed").value || "yourtag-22";
                 const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
 
