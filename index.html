@@ -1182,7 +1182,7 @@ ${shortUrl}
             fetchWithProxy v5.0（Workers対応）
             ============================ */
             async function fetchWithProxy(input) {
-                const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev/"; // ← 末尾に / を追加
+                const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev/"; 
 
                 const body = typeof input === "string"
                     ? { url: input }
@@ -1192,7 +1192,10 @@ ${shortUrl}
 
                 const response = await fetch(proxyUrl, {
                     method: "POST",
-                    headers: { "Content-Type": "application/json" },
+                    headers: { 
+                        "Content-Type": "application/json",
+                        "ngrok-skip-browser-warning": "true"   // ← これが最重要
+                    },
                     body: JSON.stringify(body)
                 });
 
