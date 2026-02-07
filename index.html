@@ -1050,28 +1050,18 @@ ${shortUrl}
             const proxyUrl = 'https://amazon-scraping-proxy.carpe-diem-miya.workers.dev';
 
             const response = await fetch(proxyUrl, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(body)
-            });
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(body)   // ← ここが重要
+        });
 
-            if (!response.ok) {
-                throw new Error("Workers fetch failed: " + response.status);
-            }
-
-            return await response.text();
-            }
-        async function fetchWithProxy(url) {
-            for (const proxy of corsProxies) {
-                try {
-                    const res = await fetch(proxy + encodeURIComponent(url));
-                    console.log("fetchWithProxy URL:", url);
-                    console.log("fetchWithProxy result length:", text?.length || 0);
-                    if (res.ok) return await res.text();
-                } catch {}
-            }
-            throw new Error("CORSプロキシがすべて失敗しました");
+        if (!response.ok) {
+            throw new Error("Workers fetch failed: " + response.status);
         }
+
+        return await response.text();
+        }
+
 
         /* ============================
            投稿文生成（URL指定タブ）
