@@ -615,7 +615,7 @@
             <h1>
                 🐦 X アフィリエイト投稿ツール 
                 <span style="background: #10a37f; padding: 3px 8px; border-radius: 4px; font-size: 12px;">⚡ Workers版</span>
-                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.5.2</span>
+                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.5.3</span>
             </h1>
             <p>高精度な価格取得 - Cloudflare Workers経由 | <a href="#version-history" style="color: white; text-decoration: underline; opacity: 0.9;">更新履歴</a></p>
         </div>
@@ -3923,7 +3923,7 @@
                 },
                 body: JSON.stringify({
                     messages: [{ role: "user", content: text }],
-                    model: "grok-4",
+                    model: "grok-beta",
                     temperature: 0.9
                 })
             });
@@ -4089,20 +4089,20 @@
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
         <div style="margin-bottom: 30px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.5.2</span>
+                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.5.3</span>
                 <span style="color: #666; font-size: 14px;">2026-02-07 - 最新版</span>
             </div>
             <div style="background: #f7f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6b6b;">
-                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🔧 完全修正版（ISO-8859-1対応）</h3>
+                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🔧 Grokモデル変更版</h3>
                 <ul style="margin-left: 20px; color: #666; line-height: 1.8;">
-                    <li>✅ <strong>プロンプト完全英語化</strong> - API送信データから日本語を完全削除</li>
-                    <li>✅ <strong>ISO-8859-1完全対応</strong> - Grok APIのヘッダーエラーを根本解決</li>
-                    <li>✅ <strong>Grok 4対応</strong> - 最新モデル + 超シンプル実装</li>
-                    <li>✅ <strong>Gemini 2.0 Flash対応</strong> - v1 API + 最新モデル</li>
+                    <li>✅ <strong>grok-beta使用</strong> - より互換性の高いモデルに変更</li>
+                    <li>✅ <strong>400エラー解決</strong> - grok-4からgrok-betaへ変更で対応</li>
+                    <li>✅ <strong>プロンプト完全英語化</strong> - ISO-8859-1完全対応</li>
+                    <li>✅ <strong>Gemini 2.0 Flash対応</strong> - v1 API使用</li>
                     <li>✅ <strong>出力は日本語</strong> - AIは日本語で宣伝文を生成</li>
                 </ul>
-                <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 6px;">
-                    <strong style="color: #155724;">🎯 完全解決:</strong> Grok APIが正常動作（プロンプト英語化で解決）
+                <div style="margin-top: 10px; padding: 10px; background: #fff3cd; border-radius: 6px;">
+                    <strong style="color: #856404;">💡 変更理由:</strong> grok-4は一部のアカウントで利用不可のため、grok-betaに変更
                 </div>
             </div>
         </div>
@@ -4196,7 +4196,7 @@
         <div style="margin-top: 30px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #1d9bf0;">
             <h3 style="color: #1d9bf0; font-size: 16px; margin-bottom: 10px;">💡 おすすめバージョン</h3>
             <p style="color: #666; line-height: 1.6; margin: 0;">
-                <strong>v2.5.2（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
+                <strong>v2.5.3（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
                 旧版（v2.0, v2.1）を使用中の場合は、今すぐv2.3にアップグレードすることを推奨します。
             </p>
         </div>
