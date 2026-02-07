@@ -615,7 +615,7 @@
             <h1>
                 🐦 X アフィリエイト投稿ツール 
                 <span style="background: #10a37f; padding: 3px 8px; border-radius: 4px; font-size: 12px;">⚡ Workers版</span>
-                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.5.4</span>
+                <span style="background: #ff6b6b; padding: 3px 8px; border-radius: 4px; font-size: 12px; margin-left: 5px;">v2.6.0</span>
             </h1>
             <p>高精度な価格取得 - Cloudflare Workers経由 | <a href="#version-history" style="color: white; text-decoration: underline; opacity: 0.9;">更新履歴</a></p>
         </div>
@@ -1148,9 +1148,25 @@
                 <button class="btn btn-outline" onclick="selectAIModel('grok')" id="ai-btn-grok" style="flex: 1;">
                     ⚡ Grok
                 </button>
+                <button class="btn btn-outline" onclick="selectAIModel('openrouter')" id="ai-btn-openrouter" style="flex: 1;">
+                    🌐 OpenRouter
+                </button>
             </div>
             <small style="color: #666; font-size: 12px;" id="ai-model-description">
                 選択したAIモデルでAPIキーを入力してください
+            </small>
+        </div>
+        
+        <!-- OpenRouter専用：モデル選択 -->
+        <div class="form-group" id="openrouter-model-selector" style="display: none;">
+            <label>🎯 OpenRouterモデル</label>
+            <select id="openrouter-model" style="width: 100%; padding: 10px; border: 2px solid #e1e8ed; border-radius: 8px; font-size: 14px;">
+                <option value="deepseek/deepseek-chat-v3-0324:free">DeepSeek Chat v3 (無料)</option>
+                <option value="deepseek/deepseek-r1-0528:free">DeepSeek R1 (無料)</option>
+                <option value="qwen/qwen3-4b:free">Qwen 3 4B (無料)</option>
+            </select>
+            <small style="color: #666; font-size: 12px;">
+                💡 すべて無料で使用できるモデルです
             </small>
         </div>
         
@@ -1206,16 +1222,18 @@
         
         <div class="tips">
             <strong>💡 使い方：</strong><br>
-            1. 使用するAIモデルを選択（Gemini または Grok）<br>
+            1. 使用するAIモデルを選択（Gemini / Grok / OpenRouter）<br>
             2. 各AIのAPIキーを無料で取得<br>
             　• <a href="https://aistudio.google.com/app/apikey" target="_blank" style="color: #1d9bf0;">Gemini APIキー取得</a><br>
             　• <a href="https://console.x.ai/" target="_blank" style="color: #1d9bf0;">Grok APIキー取得</a><br>
+            　• <a href="https://openrouter.ai/keys" target="_blank" style="color: #1d9bf0;">OpenRouter APIキー取得</a><br>
             3. APIキーを入力（自動で保存されます）<br>
             4. Amazon商品URLとアソシエイトタグを入力<br>
             5. 「AI宣伝文を生成」をクリック！<br><br>
             <strong>🎯 AIの特徴：</strong><br>
             <strong>Gemini:</strong> Googleの最新AI。バランスが良く、商品の魅力を的確に表現<br>
-            <strong>Grok:</strong> xAIの最新AI。ユーモアがあり、キャッチーな表現が得意<br><br>
+            <strong>Grok:</strong> xAIの最新AI。ユーモアがあり、キャッチーな表現が得意<br>
+            <strong>OpenRouter:</strong> 複数の無料AIモデルにアクセス可能。DeepSeek・Qwen等が使用可能<br><br>
             <strong>⚠️ 注意事項：</strong><br>
             • APIキーは安全に保管してください<br>
             • 生成された文章は必ず確認・編集してください<br>
@@ -3727,16 +3745,23 @@
             
             const geminiBtn = document.getElementById('ai-btn-gemini');
             const grokBtn = document.getElementById('ai-btn-grok');
+            const openrouterBtn = document.getElementById('ai-btn-openrouter');
             const apiKeyLabel = document.getElementById('ai-key-label');
             const apiKeyInput = document.getElementById('ai-api-key');
             const apiKeyLink = document.getElementById('ai-key-link');
             const modelDesc = document.getElementById('ai-model-description');
+            const modelSelector = document.getElementById('openrouter-model-selector');
+            
+            // すべてのボタンをリセット
+            [geminiBtn, grokBtn, openrouterBtn].forEach(btn => {
+                btn.classList.remove('btn-primary');
+                btn.classList.add('btn-outline');
+            });
             
             if (model === 'gemini') {
                 geminiBtn.classList.add('btn-primary');
                 geminiBtn.classList.remove('btn-outline');
-                grokBtn.classList.remove('btn-primary');
-                grokBtn.classList.add('btn-outline');
+                modelSelector.style.display = 'none';
                 
                 apiKeyLabel.textContent = '🔑 Gemini API Key';
                 apiKeyInput.placeholder = 'AIzaSy...';
@@ -3750,8 +3775,7 @@
             } else if (model === 'grok') {
                 grokBtn.classList.add('btn-primary');
                 grokBtn.classList.remove('btn-outline');
-                geminiBtn.classList.remove('btn-primary');
-                geminiBtn.classList.add('btn-outline');
+                modelSelector.style.display = 'none';
                 
                 apiKeyLabel.textContent = '🔑 Grok API Key';
                 apiKeyInput.placeholder = 'xai-...';
@@ -3759,6 +3783,20 @@
                 modelDesc.textContent = 'xAIの最新AI。ユーモアがあり、キャッチーな表現が得意です';
                 
                 const savedKey = localStorage.getItem('grokApiKey');
+                if (savedKey) {
+                    apiKeyInput.value = savedKey;
+                }
+            } else if (model === 'openrouter') {
+                openrouterBtn.classList.add('btn-primary');
+                openrouterBtn.classList.remove('btn-outline');
+                modelSelector.style.display = 'block';
+                
+                apiKeyLabel.textContent = '🔑 OpenRouter API Key';
+                apiKeyInput.placeholder = 'sk-or-v1-...';
+                apiKeyLink.innerHTML = '💡 <a href="https://openrouter.ai/keys" target="_blank" style="color: #1d9bf0;">OpenRouterで無料取得</a>';
+                modelDesc.textContent = '複数の無料AIモデルにアクセス可能。DeepSeek・Qwen等が使用できます';
+                
+                const savedKey = localStorage.getItem('openrouterApiKey');
                 if (savedKey) {
                     apiKeyInput.value = savedKey;
                 }
@@ -3794,6 +3832,8 @@
                 localStorage.setItem('geminiApiKey', apiKey);
             } else if (currentAIModel === 'grok') {
                 localStorage.setItem('grokApiKey', apiKey);
+            } else if (currentAIModel === 'openrouter') {
+                localStorage.setItem('openrouterApiKey', apiKey);
             }
             localStorage.setItem('amazonTag', tag);
             
@@ -3803,7 +3843,13 @@
             document.getElementById('ai-result-container').style.display = 'none';
             
             const loadingText = document.getElementById('ai-loading-text');
-            loadingText.textContent = currentAIModel === 'gemini' ? 'Gemini AIが宣伝文を生成中...' : 'Grok AIが宣伝文を生成中...';
+            if (currentAIModel === 'gemini') {
+                loadingText.textContent = 'Gemini AIが宣伝文を生成中...';
+            } else if (currentAIModel === 'grok') {
+                loadingText.textContent = 'Grok AIが宣伝文を生成中...';
+            } else if (currentAIModel === 'openrouter') {
+                loadingText.textContent = 'OpenRouter AIが宣伝文を生成中...';
+            }
             
             try {
                 console.log('=== AI宣伝文生成: 商品情報取得開始 ===');
@@ -3826,6 +3872,9 @@
                     generatedText = await callGeminiAPI(apiKey, prompt);
                 } else if (currentAIModel === 'grok') {
                     generatedText = await callGrokAPI(apiKey, prompt);
+                } else if (currentAIModel === 'openrouter') {
+                    const selectedModel = document.getElementById('openrouter-model').value;
+                    generatedText = await callOpenRouterAPI(apiKey, prompt, selectedModel);
                 }
                 
                 console.log('生成されたテキスト:', generatedText);
@@ -3933,6 +3982,32 @@
                 const errorText = await res.text();
                 console.error('Grok API error:', errorText);
                 throw new Error('Grok error: ' + res.status);
+            }
+            
+            const json = await res.json();
+            return json.choices[0].message.content.trim();
+        }
+        
+        async function callOpenRouterAPI(key, text, model) {
+            const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': 'Bearer ' + key,
+                    'HTTP-Referer': window.location.href,
+                    'X-Title': 'Amazon Affiliate Tool'
+                },
+                body: JSON.stringify({
+                    messages: [{ role: "user", content: text }],
+                    model: model,
+                    temperature: 0.9
+                })
+            });
+            
+            if (!res.ok) {
+                const errorText = await res.text();
+                console.error('OpenRouter API error:', errorText);
+                throw new Error('OpenRouter error: ' + res.status);
             }
             
             const json = await res.json();
@@ -4094,20 +4169,20 @@
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
         <div style="margin-bottom: 30px;">
             <div style="display: flex; align-items: center; gap: 10px; margin-bottom: 10px;">
-                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.5.4</span>
+                <span style="background: #ff6b6b; color: white; padding: 3px 10px; border-radius: 4px; font-weight: bold; font-size: 14px;">v2.6.0</span>
                 <span style="color: #666; font-size: 14px;">2026-02-07 - 最新版</span>
             </div>
             <div style="background: #f7f9fa; padding: 15px; border-radius: 8px; border-left: 4px solid #ff6b6b;">
-                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🎯 公式モデル名対応版</h3>
+                <h3 style="color: #333; font-size: 16px; margin-bottom: 10px;">🌐 OpenRouter対応版</h3>
                 <ul style="margin-left: 20px; color: #666; line-height: 1.8;">
-                    <li>✅ <strong>grok-4-latest使用</strong> - 公式ドキュメント準拠のモデル名</li>
-                    <li>✅ <strong>stream: false追加</strong> - 公式サンプルと同じフォーマット</li>
-                    <li>✅ <strong>エラーログ詳細化</strong> - APIエラーの内容を表示</li>
-                    <li>✅ <strong>ISO-8859-1完全対応</strong> - プロンプト英語化で解決済み</li>
-                    <li>✅ <strong>Gemini 2.0 Flash対応</strong> - v1 API使用</li>
+                    <li>✅ <strong>OpenRouter統合</strong> - 複数の無料AIモデルにアクセス可能</li>
+                    <li>✅ <strong>3つのAI選択肢</strong> - Gemini / Grok / OpenRouter</li>
+                    <li>✅ <strong>無料モデル3種</strong> - DeepSeek Chat v3, DeepSeek R1, Qwen 3 4B</li>
+                    <li>✅ <strong>モデル選択UI</strong> - OpenRouter用のドロップダウンメニュー</li>
+                    <li>✅ <strong>エラーハンドリング強化</strong> - 詳細なエラーログ表示</li>
                 </ul>
                 <div style="margin-top: 10px; padding: 10px; background: #d4edda; border-radius: 6px;">
-                    <strong style="color: #155724;">🎉 完全解決:</strong> 公式ドキュメント通りの実装で動作確認！
+                    <strong style="color: #155724;">🎉 解決策:</strong> GrokのクレジットなしエラーをOpenRouterで回避！
                 </div>
             </div>
         </div>
@@ -4201,7 +4276,7 @@
         <div style="margin-top: 30px; padding: 15px; background: #e3f2fd; border-radius: 8px; border-left: 4px solid #1d9bf0;">
             <h3 style="color: #1d9bf0; font-size: 16px; margin-bottom: 10px;">💡 おすすめバージョン</h3>
             <p style="color: #666; line-height: 1.6; margin: 0;">
-                <strong>v2.5.4（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
+                <strong>v2.6.0（最新版）</strong>を使用してください。クリック率が大幅に改善され、キーワードの多様性も向上しています。<br>
                 旧版（v2.0, v2.1）を使用中の場合は、今すぐv2.3にアップグレードすることを推奨します。
             </p>
         </div>
