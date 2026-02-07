@@ -1184,7 +1184,7 @@ ${shortUrl}
             async function fetchWithProxy(input) {
                 const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev";
 
-                // input が文字列ならオブジェクトに変換
+                // 文字列なら { url: input } に変換
                 const body = typeof input === "string"
                     ? { url: input }
                     : input;
