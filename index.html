@@ -1119,6 +1119,56 @@ ${shortUrl}
 
                 openTwitterPost(postText);
             }
+
+
+            async function generatePostText(product) {
+                const apiKey = document.getElementById("ai-api-key").value;
+                if (!apiKey) {
+                    throw new Error("APIキーが設定されていません");
+                }
+
+                const prompt = `
+            以下の商品をTwitter向けに魅力的に紹介する文章を作ってください。
+
+            【商品名】
+            ${product.title}
+
+            【価格】
+            ${product.price || "価格情報なし"}
+
+            【ASIN】
+            ${product.asin}
+
+            ・140文字以内
+            ・絵文字を適度に使用
+            ・購入意欲を高める
+            ・最後にAmazonリンクを付ける
+            `;
+
+                const response = await fetch("https://api.openai.com/v1/chat/completions", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "Authorization": `Bearer ${apiKey}`
+                    },
+                    body: JSON.stringify({
+                        model: "gpt-4o-mini",
+                        messages: [{ role: "user", content: prompt }],
+                        max_tokens: 200
+                    })
+                });
+
+                const data = await response.json();
+                const text = data.choices?.[0]?.message?.content?.trim();
+
+                if (!text) throw new Error("AI生成に失敗しました");
+
+                // Amazonリンク生成
+                const tag = document.getElementById("tag-detailed").value || "yourtag-22";
+                const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
+
+                return `${text}\n${url}`;
+            }
         /* ============================
            CORSプロキシでHTML取得
         ============================ */
