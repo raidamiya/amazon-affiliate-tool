@@ -1418,22 +1418,17 @@ ${tags}`;
                     mode: "product"
                 });
 
-                // Workers は title が取れなくても price が取れる場合がある
-                if (!data) {
+                if (!data || !data.success) {
                     console.warn("詳細ページ取得失敗:", asin);
                     return null;
                 }
 
-                // price が無い場合は null
                 if (!data.price) {
                     console.warn("価格なし:", asin);
                     return null;
                 }
 
-                // "1,580円" → 1580 に変換
-                const numeric = parseInt(data.price.replace(/[^\d]/g, ""), 10);
-
-                return numeric || null;
+                return data.price;
             }
 
             /* ============================
