@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>X アフィリエイト投稿ツール（Workers版） v5.0</title>
+    <title>X アフィリエイト投稿ツール（Workers版） v5.1</title>
 
     <style>
         * {
@@ -239,7 +239,7 @@
             <h1>
                 🐦 X アフィリエイト投稿ツール
                 <span style="background:#10a37f;padding:3px 8px;border-radius:4px;font-size:12px;">Workers版</span>
-                <span style="background:#ff6b6b;padding:3px 8px;border-radius:4px;font-size:12px;margin-left:5px;">v5.0</span>
+                <span style="background:#ff6b6b;padding:3px 8px;border-radius:4px;font-size:12px;margin-left:5px;">v5.11</span>
             </h1>
             <p>高精度な価格取得 × AI宣伝文生成 × 自動投稿</p>
         </div>
@@ -1002,25 +1002,23 @@ ${shortUrl}
             const parser = new DOMParser();
             const doc = parser.parseFromString(html, "text/html");
 
-            let title = "";
-            const titleElem = doc.querySelector("#productTitle");
-            if (titleElem) title = titleElem.textContent.trim();
-
+            let title = doc.querySelector("#productTitle")?.textContent?.trim() || "";
             let price = "";
+            let rating = "";
+            let discount = "";
+
             const priceElem = doc.querySelector(".a-price .a-offscreen");
             if (priceElem) {
                 const m = priceElem.textContent.match(/[\d,]+/);
                 if (m) price = parseInt(m[0].replace(/,/g, "")) + "円";
             }
 
-            let rating = "";
             const ratingElem = doc.querySelector(".a-icon-alt");
             if (ratingElem) {
                 const m = ratingElem.textContent.match(/([\d.]+)/);
                 if (m) rating = "★" + m[1];
             }
 
-            let discount = "";
             const discountElem = doc.querySelector(".savingsPercentage");
             if (discountElem) {
                 const m = discountElem.textContent.match(/(\d+)%/);
@@ -1050,28 +1048,30 @@ ${shortUrl}
             /* ============================
             fetchWithProxy v5.0（Workers対応）
             ============================ */
-            async function fetchWithProxy(body) {
+            async function fetchWithProxy(url) {
                 const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev";
 
-                console.log("fetchWithProxy body:", body);
+                console.log("fetchWithProxy URL:", url);
 
                 const response = await fetch(proxyUrl, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify(body)
+                    body: JSON.stringify({
+                        url: url,
+                        headers: {
+                            "User-Agent":
+                                "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/121.0.0.0 Safari/537.36",
+                            "Accept":
+                                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
+                            "Accept-Language": "ja,en-US;q=0.9,en;q=0.8",
+                        }
+                    })
                 });
 
-                console.log("fetchWithProxy status:", response.status);
+                if (!response.ok) throw new Error("Proxy fetch failed: " + response.status);
 
-                if (!response.ok) {
-                    throw new Error("Workers fetch failed: " + response.status);
-                }
-
-                // Workers の返却 JSON を丸ごと確認
                 const data = await response.json();
-                console.log("Workers response JSON:", data);
-
-                return data;
+                return data.html;  // ← HTML を返す
             }
 
 
@@ -1416,25 +1416,18 @@ ${tags}`;
             ============================ */
             async function getPriceFromDetailPage(asin) {
                 const detailUrl = `https://www.amazon.co.jp/dp/${asin}`;
+                const html = await fetchWithProxy(detailUrl);
 
-                const data = await fetchWithProxy({
-                    url: detailUrl,
-                    mode: "product"
-                });
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(html, "text/html");
 
-                console.log("Workers product response:", asin, data);
+                const priceElem = doc.querySelector(".a-price .a-offscreen");
+                if (!priceElem) return null;
 
-                if (!data || !data.success) {
-                    console.warn("詳細ページ取得失敗:", asin);
-                    return null;
-                }
+                const m = priceElem.textContent.match(/[\d,]+/);
+                if (!m) return null;
 
-                if (!data.price) {
-                    console.warn("価格なし:", asin);
-                    return null;
-                }
-
-                return data.price;
+                return parseInt(m[0].replace(/,/g, "")) + "円";
             }
 
             /* ============================
@@ -1460,20 +1453,23 @@ ${tags}`;
             async function getRankingFromRSS(rssUrl, maxItems = 20) {
                 console.log("RSS取得開始:", rssUrl);
 
-                // Workers に RSS を送る
-                const data = await fetchWithProxy({
-                    url: rssUrl,
-                    mode: "rss"
-                });
+                const html = await fetchWithProxy(rssUrl);
 
-                console.log("RSS items:", data.items);
+                const asinMatches = [...html.matchAll(/data-asin="([A-Z0-9]{10})"/g)];
+                const asinList = asinMatches.map(m => m[1]);
 
-                if (!data.items || data.items.length === 0) {
-                    console.warn("RSSからアイテムが取得できませんでした:", rssUrl);
-                    return [];
+                const titleMatches = [...html.matchAll(/<img[^>]*alt="([^"]+)"[^>]*>/g)];
+                const titleList = titleMatches.map(m => m[1].trim());
+
+                const results = [];
+                for (let i = 0; i < asinList.length; i++) {
+                    results.push({
+                        asin: asinList[i],
+                        title: titleList[i] || "商品名不明"
+                    });
                 }
 
-                return data.items.slice(0, maxItems);
+                return results.slice(0, maxItems);
             }
 
 
