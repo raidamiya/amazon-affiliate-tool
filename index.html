@@ -1137,36 +1137,31 @@ ${shortUrl}
                 const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
 
                 const prompt = `
-            あなたはSNSマーケティングのプロです。
-            以下の商品をTwitter向けに「売れる投稿」として最適化してください。
+            以下の商品をTwitter向けに魅力的に紹介する文章を作ってください。
 
-            【商品名】
-            ${product.title}
+            商品名: ${product.title}
+            ASIN: ${product.asin}
+            価格: ${product.price}
 
-            【ASIN】
-            ${product.asin}
-
-            【価格】
-            ${product.price || "価格情報なし"}
-
-            【条件】
-            ・140文字以内
-            ・読みやすく、購入意欲を高める構成
-            ・絵文字は2〜5個、自然に使う
-            ・メリットを1つだけ短く強調
-            ・最後に「詳しくはこちら👇」を入れる
-            ・リンクは文末にそのまま貼る（短縮しない）
-            ・ハッシュタグは使わない
-            ・煽りすぎない、自然なテンション
-
-            【出力形式】
-            文章のみ（リンクは最後に改行して貼る）
+            140文字以内でお願いします。
             `;
 
                 const data = await fetchOpenAI(apiKey, prompt);
 
-                const text = data.choices?.[0]?.message?.content?.trim();
-                if (!text) throw new Error("AI生成に失敗しました");
+                // ★ OpenRouter 全形式対応
+                let text =
+                    data?.choices?.[0]?.message?.content ||
+                    data?.choices?.[0]?.text ||
+                    data?.output_text ||
+                    data?.content?.[0]?.text ||
+                    null;
+
+                if (!text) {
+                    console.error("OpenRouter response:", data);
+                    throw new Error("AI生成に失敗しました");
+                }
+
+                text = text.trim();
 
                 return `${text}\n${url}`;
             }
