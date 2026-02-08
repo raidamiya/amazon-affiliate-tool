@@ -1134,8 +1134,7 @@ ${shortUrl}
                 const apiKey = localStorage.getItem("openrouterApiKey");
                 const tag = document.getElementById("tag-detailed").value || "yourtag-22";
                 const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
-
-                const model = document.getElementById("openrouter-model").value || "meta-llama/llama-3.3-70b-instruct:free";
+                const models = document.getElementById("openrouter-model").value || "meta-llama/llama-3.3-70b-instruct:free";
 
                 const prompt = `
             以下の商品をTwitter向けに魅力的に紹介する文章を作ってください。
@@ -1147,7 +1146,7 @@ ${shortUrl}
             140文字以内でお願いします。
             `;
 
-                let text = await callOpenRouterAPI(apiKey, prompt, model);
+                let text = await callOpenRouterAPI(apiKey, prompt, models);
 
                 if (!text) {
                     throw new Error("AI生成に失敗しました");
