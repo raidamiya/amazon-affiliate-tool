@@ -2111,16 +2111,15 @@ ${tags}`;
                         const item = { asin: null, title: keyword };
 
                         // ▼ ASIN → 検索 fallback → スキップ
-                        const html = await fetchProductSmart(item);
+                        const result = await fetchProductSmart(item);
 
-                        if (!html) {
+                        if (!result.success) {
                             this.log("⚠️ 商品ページが取得できませんでした", "warning");
                             this.moveToNextKeyword();
                             return this.scheduleNext();
                         }
 
-                        // ▼ 商品ページを currentProducts に保存
-                        this.currentProducts = [{ html, asin: item.asin, title: item.title }];
+                        this.currentProducts = [result];
                     }
 
                     // ▼ 商品ページ HTML を解析
