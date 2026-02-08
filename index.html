@@ -971,12 +971,15 @@ ${shortUrl}
 
         async function shortenUrl(longUrl) {
             try {
-                const res = await fetch(
-                    "https://tinyurl.com/api-create.php?url=" + encodeURIComponent(longUrl)
-                );
-                if (res.ok) return await res.text();
-            } catch {}
-            return longUrl;
+                const res = await fetch(`https://tinyurl.com/api-create.php?url=${encodeURIComponent(longUrl)}`);
+                const text = await res.text();
+
+                // TinyURL は純粋なテキストで返すのでそのまま使える
+                return text.trim();
+            } catch (e) {
+                console.error("URL短縮失敗:", e);
+                return longUrl; // フォールバック
+            }
         }
 
         /* ============================
@@ -2310,9 +2313,10 @@ ${tags}`;
                 try {
                     let aiText = await callOpenRouterAPI(apiKey, prompt, model);
 
-                    /* ============================
-                    AIの暴走を防ぐ後処理
-                    ============================ */
+                    // URL を退避
+                    const url = shortUrl;
+
+                    // AIの暴走を防ぐ後処理
                     let finalText = aiText
                         .replace(/はい、.+?。/g, "")
                         .replace(/以下.+?:/gi, "")
@@ -2322,21 +2326,16 @@ ${tags}`;
                         .replace(/\n{2,}/g, "\n")
                         .trim();
 
-                    /* ============================
-                    ハッシュタグの前にスペース強制
-                    ============================ */
-                    finalText = finalText.replace(/(#\S+)/g, " $1");
+                    // ハッシュタグ整形（URL の # を壊さない）
+                    // ハッシュタグ整形（URL の # を壊さない）
+                    finalText = finalText.replace(/(^|\s)(#\w+)/g, " $2");
 
-                    /* ============================
-                    URL が無い場合は強制追加
-                    ============================ */
-                    if (!finalText.includes(shortUrl)) {
-                        finalText += "\n" + shortUrl;
+                    // URL が消えていたら最後に追加
+                    if (!finalText.includes(url)) {
+                        finalText += "\n" + url;
                     }
 
-                    /* ============================
-                    180文字制限
-                    ============================ */
+                    // 180文字制限
                     if (finalText.length > 180) {
                         finalText = finalText.substring(0, 177) + "…";
                     }
