@@ -1145,15 +1145,9 @@ ${shortUrl}
             140文字以内でお願いします。
             `;
 
-                const data = await fetchOpenAI(apiKey, prompt);
-
-                // ★ OpenRouter 全形式対応
-                let text =
-                    data?.choices?.[0]?.message?.content ||
-                    data?.choices?.[0]?.text ||
-                    data?.output_text ||
-                    data?.content?.[0]?.text ||
-                    null;
+                //const data = await fetchOpenAI(apiKey, prompt);
+                let text = await callOpenRouterAPI(apiKey, prompt, model);
+                
 
                 if (!text) {
                     console.error("OpenRouter response:", data);
