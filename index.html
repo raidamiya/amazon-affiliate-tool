@@ -1180,19 +1180,26 @@ ${shortUrl}
             fetchWithProxy v5.0（Workers対応）
             ============================ */
             async function fetchWithProxy(input) {
-                const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev/"; 
+                let url = typeof input === "string" ? input : input.url;
+
+                // ★ RSS URL なら /rss に送る
+                const isRSS = url.includes("/gp/rss/");
+
+                const proxyUrl = isRSS
+                    ? "https://adventurously-clavate-kourtney.ngrok-free.dev/rss"
+                    : "https://adventurously-clavate-kourtney.ngrok-free.dev/";
 
                 const body = typeof input === "string"
-                    ? { url: input }
+                    ? { url }
                     : input;
 
-                console.log("fetchWithProxy body:", body);
+                console.log("fetchWithProxy body:", body, "→ proxy:", proxyUrl);
 
                 const response = await fetch(proxyUrl, {
                     method: "POST",
-                    headers: { 
+                    headers: {
                         "Content-Type": "application/json",
-                        "ngrok-skip-browser-warning": "true"   // ← これが最重要
+                        "ngrok-skip-browser-warning": "true"
                     },
                     body: JSON.stringify(body)
                 });
