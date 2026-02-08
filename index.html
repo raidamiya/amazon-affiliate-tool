@@ -1910,40 +1910,62 @@ ${tags}`;
 
 
             async function fetchProductSmart(item) {
-                const { asin, title } = item;
+                const keyword = item.title;
 
-                console.log("=== 商品取得開始 ===");
-                console.log("ASIN:", asin);
-                console.log("タイトル:", title);
+                try {
+                    // ① Amazon検索ページを取得
+                    const searchUrl = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
+                    const searchRes = await fetchWithProxy(searchUrl);
 
-                // 1. ASIN 直接取得
-                if (asin) {
-                    const asinResult = await fetchProductByASIN(asin);
-                    if (asinResult.success) {
-                        return {
-                            success: true,
-                            html: asinResult.html,
-                            asin,
-                            title
-                        };
+                    if (!searchRes || !searchRes.html) {
+                        return { success: false, error: "検索HTML取得失敗" };
                     }
-                }
 
-                console.log("⚠️ ASIN 直接取得失敗 → 検索 fallback 開始");
+                    const searchHtml = searchRes.html;
 
-                // 2. 検索 fallback
-                const searchResult = await fetchProductByKeyword(title);
-                if (searchResult.success) {
+                    // ② ★ 複数 ASIN 抽出（ここで extractMultipleASINs を呼ぶ）
+                    const asins = extractMultipleASINs(searchHtml).slice(0, 10);
+
+                    if (asins.length === 0) {
+                        return { success: false, error: "ASIN抽出ゼロ" };
+                    }
+
+                    const products = [];
+
+                    // ③ 各 ASIN の商品ページを取得
+                    for (const asin of asins) {
+                        const productUrl = `https://www.amazon.co.jp/dp/${asin}`;
+                        const res = await fetchWithProxy(productUrl);
+
+                        if (!res || !res.html) continue;
+
+                        const product = parseAmazonProduct(res.html);
+                        product.asin = asin;
+                        product.html = res.html;
+
+                        // ④ スコア付け
+                        product.score = calcScore(product);
+
+                        products.push(product);
+                    }
+
+                    if (products.length === 0) {
+                        return { success: false, error: "商品情報ゼロ" };
+                    }
+
+                    // ⑤ スコア順に並べる（降順）
+                    products.sort((a, b) => b.score - a.score);
+
+                    // ⑥ 最強の商品を返す
                     return {
                         success: true,
-                        html: searchResult.html,
-                        asin: searchResult.asin,
-                        title
+                        ...products[0]
                     };
-                }
 
-                // 3. 完全に失敗した場合のみ false を返す
-                return { success: false };
+                } catch (e) {
+                    console.error("fetchProductSmart エラー:", e);
+                    return { success: false, error: e.message };
+                }
             }
 
            function parseAmazonProduct(html) {
@@ -1964,11 +1986,11 @@ ${tags}`;
 
                 product.price = price;
 
-                // 割引率（例: "-20%"）
+                // 割引率
                 const discountMatch = html.match(/savingsPercentage[^>]*>([^<]+)</);
                 product.discount = discountMatch ? discountMatch[1].trim() : null;
 
-                // ポイント（例: "328pt"）
+                // ポイント
                 const pointMatch = html.match(/([0-9,]+)pt/);
                 product.points = pointMatch ? pointMatch[1].trim() : null;
 
@@ -1984,18 +2006,15 @@ ${tags}`;
 
                 product.image = img;
 
-                // 商品説明（feature bullets）
+                // 商品説明
                 const descMatch = html.match(/<div id="feature-bullets"[\s\S]*?<ul[\s\S]*?>([\s\S]*?)<\/ul>/);
-
                 if (descMatch && descMatch[1]) {
                     const raw = descMatch[1];
                     const matches = raw.matchAll ? [...raw.matchAll(/<span[^>]*>(.*?)<\/span>/g)] : [];
-
                     const bullets = matches
                         .map(m => m[1].trim())
                         .filter(t => t.length > 0)
                         .slice(0, 5);
-
                     product.description = bullets.length > 0 ? bullets.join(" / ") : "説明情報なし";
                 } else {
                     product.description = "説明情報なし";
@@ -2005,6 +2024,19 @@ ${tags}`;
                 const asinMatch = html.match(/"asin":"([A-Z0-9]{10})"/);
                 product.asin = asinMatch ? asinMatch[1] : "ASIN不明";
 
+                // ★ ここから追加項目 ★
+
+                // 星評価
+                const ratingMatch = html.match(/data-hook="rating-out-of-text">([\d.]+) /);
+                product.rating = ratingMatch ? ratingMatch[1] : null;
+
+                // レビュー数
+                const reviewMatch = html.match(/data-hook="total-review-count"[^>]*>([\d,]+)/);
+                product.reviewCount = reviewMatch ? reviewMatch[1] : null;
+
+                // ベストセラー
+                product.isBestSeller = html.includes("ベストセラー") || html.includes("Best Seller");
+
                 return product;
             }
 
@@ -2013,6 +2045,98 @@ ${tags}`;
                     const j = Math.floor(Math.random() * (i + 1));
                     [array[i], array[j]] = [array[j], array[i]];
                 }
+            }
+
+
+
+            function calcScore(product) {
+                let score = 0;
+
+                // -----------------------------
+                // ① 割引率（最重要）
+                // -----------------------------
+                if (product.discount) {
+                    const d = parseInt(product.discount.replace(/[^0-9]/g, ""));
+                    if (!isNaN(d)) {
+                        score += Math.min(d * 2, 40); // 最大40点
+                    }
+                }
+
+                // -----------------------------
+                // ② レビュー数
+                // -----------------------------
+                if (product.reviewCount) {
+                    const r = parseInt(product.reviewCount.replace(/[^0-9]/g, ""));
+                    if (!isNaN(r)) {
+                        score += Math.min(r / 100, 20); // 最大20点
+                    }
+                }
+
+                // -----------------------------
+                // ③ 星評価（1〜5）
+                // -----------------------------
+                if (product.rating) {
+                    const rating = parseFloat(product.rating);
+                    if (!isNaN(rating)) {
+                        score += rating * 4; // 最大20点
+                    }
+                }
+
+                // -----------------------------
+                // ④ ポイント
+                // -----------------------------
+                if (product.points) {
+                    const p = parseInt(product.points.replace(/[^0-9]/g, ""));
+                    if (!isNaN(p)) {
+                        score += Math.min(p / 50, 10); // 最大10点
+                    }
+                }
+
+                // -----------------------------
+                // ⑤ ベストセラータグ
+                // -----------------------------
+                if (product.isBestSeller) {
+                    score += 10;
+                }
+
+                // -----------------------------
+                // ⑥ 価格帯（安さは正義）
+                // -----------------------------
+                if (product.price) {
+                    const price = parseInt(product.price.replace(/[^0-9]/g, ""));
+                    if (!isNaN(price)) {
+
+                        // 500〜1500円 → 衝動買いゾーン（最強）
+                        if (price >= 500 && price <= 1500) {
+                            score += 10;
+
+                        // 1501〜3000円 → 売れやすいゾーン
+                        } else if (price > 1500 && price <= 3000) {
+                            score += 6;
+
+                        // 3001〜8000円 → 普通
+                        } else if (price > 3000 && price <= 8000) {
+                            score += 3;
+
+                        // 8000円以上 → 高額で売れにくい
+                        } else {
+                            score -= 5; // マイナス補正
+                        }
+                    }
+                }
+
+                return Math.round(score);
+            }
+
+
+            function extractMultipleASINs(html) {
+                const matches = [...html.matchAll(/data-asin="([A-Z0-9]{10})"/g)];
+                const asins = matches
+                    .map(m => m[1])
+                    .filter(asin => asin && asin !== "");
+
+                // 重複除去
+                return [...new Set(asins)];
             }
 
         /* ============================================================
@@ -2195,8 +2319,17 @@ ${tags}`;
                     const asin = result.asin;
                     const title = result.title;
 
-                    this.log(`📦 商品取得: ${title.substring(0, 30)}…`, "info");
+                    // 商品取得成功
+                        this.log(`📦 商品取得: ${result.title}`, "info");
 
+                        // ★ 売れやすさスコア
+                        this.log(`⭐ 売れやすさスコア: ${result.score}`, "info");
+
+                        // ★ スコア理由（価格・割引・レビュー・星評価・ポイント）
+                        this.log(
+                            `📊 スコア理由 → 価格:${result.price} / 割引:${result.discount} / 星:${result.rating} / レビュー:${result.reviewCount} / ポイント:${result.points} / ベストセラー:${result.isBestSeller}`,
+                            "info"
+                        );
                     // ▼ HTML → 商品情報
                     const product = parseAmazonProduct(html);
 
