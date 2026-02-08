@@ -2107,14 +2107,11 @@ ${tags}`;
 
                 try {
 
-                    // ▼ 商品リストが空なら「キーワード検索」ではなく
-                    //    すでに start() で作った this.keywords を使う
+                    // ▼ 商品リストが空なら fetchProductSmart を実行
                     if (this.currentProductIndex === 0 || this.currentProducts.length === 0) {
 
-                        // ▼ キーワードを「商品タイトル」として扱う
                         const item = { asin: null, title: keyword };
 
-                        // ▼ ASIN → 検索 fallback → スキップ
                         const result = await fetchProductSmart(item);
 
                         if (!result.success) {
@@ -2123,15 +2120,20 @@ ${tags}`;
                             return this.scheduleNext();
                         }
 
+                        // ★ 正しい currentProducts の構造
                         this.currentProducts = [result];
                     }
 
-                    // ▼ 商品ページ HTML を解析
-                    const { html, asin } = this.currentProducts[this.currentProductIndex];
-                    const title = this.keywords[this.currentKeywordIndex];
+                    // ▼ 正しい取り出し方（result オブジェクト）
+                    const result = this.currentProducts[this.currentProductIndex];
+
+                    const html = result.html;
+                    const asin = result.asin;
+                    const title = result.title;
 
                     this.log(`📦 商品取得: ${title.substring(0, 30)}…`, "info");
 
+                    // ▼ HTML → 商品情報
                     const product = parseAmazonProduct(html);
 
                     // ▼ AIで宣伝文生成
