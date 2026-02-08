@@ -1939,6 +1939,12 @@ ${tags}`;
                     };
                 }
 
+                console.log("fetchProductSmart return:", {
+                success: true,
+                html: searchResult.html,
+                asin: searchResult.asin,
+                title
+            });
                 return { success: false };
             }
 
@@ -2135,6 +2141,7 @@ ${tags}`;
 
                         // ★ 正しい currentProducts の構造
                         this.currentProducts = [result];
+                        console.log("currentProducts:", this.currentProducts);
                     }
 
                     // ▼ 正しい取り出し方（result オブジェクト）
