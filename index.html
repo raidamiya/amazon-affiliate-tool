@@ -1117,6 +1117,9 @@ ${shortUrl}
 
             async function postSingleProduct(asin, title) {
                 const price = await getPriceFromDetailPage(asin);
+
+                console.log("投稿前 product:", { asin, title, price }); // ← 追加
+
                 const postText = await generatePostText({
                     asin,
                     title,
