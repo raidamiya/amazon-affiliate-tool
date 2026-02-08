@@ -2116,7 +2116,9 @@ ${tags}`;
                     }
 
                     // ▼ 商品ページ HTML を解析
-                    const { html, asin, title } = this.currentProducts[this.currentProductIndex];
+                    const { html, asin } = this.currentProducts[this.currentProductIndex];
+                    const title = this.keywords[this.currentKeywordIndex];
+
                     this.log(`📦 商品取得: ${title.substring(0, 30)}…`, "info");
 
                     const product = parseAmazonProduct(html);
