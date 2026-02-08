@@ -1156,6 +1156,15 @@ ${shortUrl}
 
                 return `${text}\n${url}`;
             }
+
+
+
+            function openTwitterPost(text) {
+                const tweetUrl = "https://twitter.com/intent/tweet?text=" + encodeURIComponent(text);
+                window.open(tweetUrl, "_blank");
+            }
+
+
         /* ============================
            CORSプロキシでHTML取得
         ============================ */
