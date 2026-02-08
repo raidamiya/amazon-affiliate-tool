@@ -2146,12 +2146,36 @@ ${tags}`;
 
             function extractMultipleASINs(html) {
                 const matches = [...html.matchAll(/data-asin="([A-Z0-9]{10})"/g)];
-                const asins = matches
+                let asins = matches
                     .map(m => m[1])
                     .filter(asin => asin && asin !== "");
 
                 // 重複除去
-                return [...new Set(asins)];
+                asins = [...new Set(asins)];
+
+                // ★ Prime Video / Kindle / Audible を除外
+                const filtered = asins.filter(asin => {
+                    // ASIN の前後300文字を取得して判定
+                    const idx = html.indexOf(asin);
+                    if (idx === -1) return false;
+
+                    const block = html.slice(Math.max(0, idx - 300), idx + 300);
+
+                    // 除外キーワード
+                    const ngWords = [
+                        "Prime Video",
+                        "/video/",
+                        "primevideo",
+                        "Audible",
+                        "オーディオブック",
+                        "Kindle",
+                        "電子書籍"
+                    ];
+
+                    return !ngWords.some(ng => block.includes(ng));
+                });
+
+                return filtered;
             }
 
         /* ============================================================
@@ -2452,6 +2476,8 @@ ${tags}`;
                 - 絵文字は 2〜4 個
                 - 英語タグは禁止
                 - 180 文字以内
+                - 割引率や価格の再計算は禁止。計算結果を出力しない。
+                - 価格や割引はそのまま表示し、再計算しない。
                 - 宣伝文以外の文章を一切出力しない
 
                 【出力形式】
