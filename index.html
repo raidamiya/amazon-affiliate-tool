@@ -1879,9 +1879,22 @@ ${tags}`;
                     const url = `https://www.amazon.co.jp/s?k=${encodeURIComponent(kw)}`;
                     const result = await fetchWithProxy(url);
 
-                    if (result?.html && result.html.includes("/dp/")) {
-                        console.log("✅ 検索ヒット:", kw);
-                        return { success: true, html: result.html, keyword: kw };
+                    if (!result?.html) continue;
+
+                    // ▼ 検索結果ページから ASIN を抽出
+                    const asinMatch = result.html.match(/data-asin="([A-Z0-9]{10})"/);
+                    if (!asinMatch) continue;
+
+                    const asin = asinMatch[1];
+                    console.log("🔎 検索結果から ASIN 抽出:", asin);
+
+                    // ▼ 抽出した ASIN で商品ページを再取得
+                    const productUrl = `https://www.amazon.co.jp/dp/${asin}`;
+                    const productResult = await fetchWithProxy(productUrl);
+
+                    if (productResult?.html && productResult.html.includes("/dp/")) {
+                        console.log("✅ 検索 fallback 成功:", kw);
+                        return { success: true, html: productResult.html, asin, keyword: kw };
                     }
                 }
 
