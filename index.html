@@ -1622,18 +1622,54 @@ ${tags}`;
             v4.0 Amazon ベストセラー RSS（安定版）
             ============================ */
             const amazonRSSCategories = [
-                { name: "ホーム＆キッチン", url: "https://www.amazon.co.jp/gp/rss/bestsellers/kitchen" },
-                { name: "食品", url: "https://www.amazon.co.jp/gp/rss/bestsellers/food-beverage" },
-                { name: "本", url: "https://www.amazon.co.jp/gp/rss/bestsellers/books" },
-                { name: "Kindle本", url: "https://www.amazon.co.jp/gp/rss/bestsellers/digital-text" },
-                { name: "おもちゃ", url: "https://www.amazon.co.jp/gp/rss/bestsellers/toys" },
-                { name: "ファッション", url: "https://www.amazon.co.jp/gp/rss/bestsellers/fashion" },
-                { name: "文房具", url: "https://www.amazon.co.jp/gp/rss/bestsellers/office-products" },
-                { name: "ビューティー", url: "https://www.amazon.co.jp/gp/rss/bestsellers/beauty" },
-                { name: "パソコン・ガジェット", url: "https://www.amazon.co.jp/gp/rss/bestsellers/computers" },
-                { name: "ペット", url: "https://www.amazon.co.jp/gp/rss/bestsellers/pet-supplies" },
-                { name: "ゲーム", url: "https://www.amazon.co.jp/gp/rss/bestsellers/videogames" }
+                { name: "kitchen", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/kitchen" },
+                { name: "food", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/food-beverage" },
+                { name: "books", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/books" },
+                { name: "digital", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/digital-text" },
+                { name: "toys", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/toys" },
+                { name: "fashion", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/fashion" },
+                { name: "office", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/office-products" },
+                { name: "beauty", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/beauty" },
+                { name: "computers", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/computers" },
+                { name: "pets", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/pet-supplies" },
+                { name: "games", htmlUrl: "https://www.amazon.co.jp/gp/bestsellers/videogames" }
             ];
+
+            /* ============================
+            v5.0 ランキングHTML → ASIN & タイトル取得
+            ============================ */
+            async function getRankingFromHTML(url, maxItems = 20) {
+                console.log("ランキングHTML取得開始:", url);
+
+                const result = await fetchWithProxy(url);
+
+                if (!result || !result.html) {
+                    console.error("ランキングHTML取得失敗:", url, result);
+                    return [];
+                }
+
+                const html = result.html;
+
+                // ASIN 抽出
+                const asinMatches = [...html.matchAll(/\/dp\/([A-Z0-9]{10})/g)]
+                    .map(m => m[1]);
+
+                // タイトル抽出（ランキングページの構造に合わせる）
+                const titleMatches = [...html.matchAll(/<img[^>]+alt="([^"]+)"[^>]*>/g)]
+                    .map(m => m[1]);
+
+                const items = [];
+
+                for (let i = 0; i < asinMatches.length; i++) {
+                    items.push({
+                        asin: asinMatches[i],
+                        title: titleMatches[i] || "商品名不明"
+                    });
+                }
+
+                return items.slice(0, maxItems);
+            }
+
 
             /* ============================
             v5.0 RSS → ASIN & タイトル取得（完全版）
@@ -1689,68 +1725,24 @@ ${tags}`;
             ============================ */
 
             async function get30TrendingKeywords() {
-                console.log("=== v5.0 30ワード生成開始 ===");
+                console.log("=== v5.0 30ワード生成開始（HTML版） ===");
 
                 const allCandidates = [];
 
-                // RSS から ASIN & タイトル取得
                 for (const cat of amazonRSSCategories) {
-                    const items = await getRankingFromRSS(cat.url, 20);
+                    const items = await getRankingFromHTML(cat.htmlUrl, 20);
 
-                    if (!items || items.length === 0) {
-                        console.warn("カテゴリが空のためスキップ:", cat.url);
+                    if (items.length === 0) {
+                        console.warn("カテゴリが空のためスキップ:", cat.htmlUrl);
                         continue;
                     }
 
                     allCandidates.push(...items);
                 }
 
-                console.log("RSS候補総数:", allCandidates.length);
+                console.log("HTML候補総数:", allCandidates.length);
 
-                if (allCandidates.length === 0) {
-                    console.error("RSS候補がゼロのため終了");
-                    return [];
-                }
-
-                // ランダムに 30 件抽出
-                const selected = allCandidates
-                    .sort(() => Math.random() - 0.5)
-                    .slice(0, 30);
-
-                const keywords = [];
-
-                for (const item of selected) {
-                    console.log("商品詳細取得開始:", item.asin);
-
-                    const price = await getPriceFromDetailPage(item.asin);
-
-                    if (!price) {
-                        console.warn("価格なし:", item.asin);
-                        await new Promise(r => setTimeout(r, 1200));
-                        continue;
-                    }
-                    const numericPrice = Number(price.replace(/[^\d]/g, ""));
-                    if (numericPrice > 1500) {
-                        console.log("1500円超のため除外:", item.asin, price);
-                        await new Promise(r => setTimeout(r, 1200));
-                        continue;
-                    }
-
-                    const kw = extractKeywordFromTitle(item.title);
-
-                    if (kw && !keywords.includes(kw)) {
-                        keywords.push(kw);
-                        console.log("キーワード追加:", kw);
-                    }
-
-                    await new Promise(r => setTimeout(r, 1200));
-                }
-
-                console.log("キーワード抽出:", keywords.length);
-
-                return keywords
-                    .sort(() => Math.random() - 0.5)
-                    .slice(0, 30);
+                return allCandidates.map(item => item.title).slice(0, 30);
             }
 
 
