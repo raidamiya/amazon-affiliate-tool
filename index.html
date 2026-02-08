@@ -1131,8 +1131,7 @@ ${shortUrl}
 
 
             async function generatePostText(product) {
-                const apiKey = document.getElementById("ai-api-key").value;
-
+                const apiKey = localStorage.getItem("openrouterApiKey");
                 const tag = document.getElementById("tag-detailed").value || "yourtag-22";
                 const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
 
