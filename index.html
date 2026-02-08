@@ -1611,28 +1611,51 @@ ${tags}`;
             ];
 
             /* ============================
-            v5.0 RSS → ASIN & タイトル取得
+            v5.0 RSS → ASIN & タイトル取得（完全版）
             ============================ */
             async function getRankingFromRSS(rssUrl, maxItems = 20) {
                 console.log("RSS取得開始:", rssUrl);
 
-                const html = await fetchWithProxy(rssUrl);
+                const result = await fetchWithProxy(rssUrl);
 
-                const asinMatches = [...html.matchAll(/data-asin="([A-Z0-9]{10})"/g)];
-                const asinList = asinMatches.map(m => m[1]);
+                if (!result || !result.html) {
+                    console.error("RSS取得失敗:", rssUrl);
+                    return [];
+                }
 
-                const titleMatches = [...html.matchAll(/<img[^>]*alt="([^"]+)"[^>]*>/g)];
-                const titleList = titleMatches.map(m => m[1].trim());
+                const xml = result.html;
 
-                const results = [];
-                for (let i = 0; i < asinList.length; i++) {
-                    results.push({
-                        asin: asinList[i],
-                        title: titleList[i] || "商品名不明"
+                if (typeof xml !== "string") {
+                    console.error("RSSが文字列ではありません:", typeof xml);
+                    return [];
+                }
+
+                // タイトル抽出（最初の1件はチャンネル名なので除外）
+                const titles = [...xml.matchAll(/<title>(.*?)<\/title>/g)]
+                    .map(m => m[1])
+                    .slice(1);
+
+                // ASIN抽出（<link> から）
+                const links = [...xml.matchAll(/<link>(.*?)<\/link>/g)]
+                    .map(m => m[1])
+                    .slice(1);
+
+                const items = [];
+
+                for (let i = 0; i < links.length; i++) {
+                    const link = links[i];
+                    const title = titles[i] || "商品名不明";
+
+                    const asinMatch = link.match(/\/dp\/([A-Z0-9]{10})/);
+                    if (!asinMatch) continue;
+
+                    items.push({
+                        asin: asinMatch[1],
+                        title
                     });
                 }
 
-                return results.slice(0, maxItems);
+                return items.slice(0, maxItems);
             }
 
 
@@ -1685,8 +1708,8 @@ ${tags}`;
                         await new Promise(r => setTimeout(r, 1200));
                         continue;
                     }
-
-                    if (price > 1500) {
+                    const numericPrice = Number(price.replace(/[^\d]/g, ""));
+                    if (numericPrice > 1500) {
                         console.log("1500円超のため除外:", item.asin, price);
                         await new Promise(r => setTimeout(r, 1200));
                         continue;
