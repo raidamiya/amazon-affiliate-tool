@@ -1790,36 +1790,133 @@ ${tags}`;
 
 
             document.getElementById("debug-btn").addEventListener("click", async () => {
-    const testUrl = document.getElementById("amazonUrl")?.value;
+                const testUrl = document.getElementById("amazonUrl")?.value;
 
-    if (!testUrl) {
-        alert("デバッグ対象の URL を入力してください（例: https://www.amazon.co.jp/dp/B0XXXXXXX）");
-        return;
-    }
+                if (!testUrl) {
+                    alert("デバッグ対象の URL を入力してください（例: https://www.amazon.co.jp/dp/B0XXXXXXX）");
+                    return;
+                }
 
-    console.log("=== DEBUG MODE START ===");
-    console.log("対象URL:", testUrl);
+                console.log("=== DEBUG MODE START ===");
+                console.log("対象URL:", testUrl);
 
-    try {
-        const data = await fetchWithProxy({
-            url: testUrl,
-            mode: "debug"
-        });
+                try {
+                    const data = await fetchWithProxy({
+                        url: testUrl,
+                        mode: "debug"
+                    });
 
-        console.log("=== Workers DEBUG Response ===");
-        console.log("ステータス:", data.status);
-        console.log("HTML 長さ:", data.html_length);
-        console.log("HTML 本文（最初の5500文字）:");
-        console.log(data.html?.slice(0, 5500));
+                    console.log("=== Workers DEBUG Response ===");
+                    console.log("ステータス:", data.status);
+                    console.log("HTML 長さ:", data.html_length);
+                    console.log("HTML 本文（最初の5500文字）:");
+                    console.log(data.html?.slice(0, 5500));
 
-        alert("デバッグ完了。Console に HTML の内容を出力しました。");
+                    alert("デバッグ完了。Console に HTML の内容を出力しました。");
 
-    } catch (e) {
-        console.error("DEBUG ERROR:", e);
-        alert("デバッグ中にエラーが発生しました。Console を確認してください。");
-    }
-});
-            
+                } catch (e) {
+                    console.error("DEBUG ERROR:", e);
+                    alert("デバッグ中にエラーが発生しました。Console を確認してください。");
+                }
+            });
+
+            function generateSearchKeywords(title) {
+                let cleaned = title
+                    .replace(/【[^】]+】/g, "")
+                    .replace(/\([^)]*\)/g, "")
+                    .replace(/[0-9]{3,}/g, "")
+                    .replace(/[^\p{L}\p{N}\s]/gu, " ")
+                    .replace(/\s+/g, " ")
+                    .trim();
+
+                const words = cleaned.split(" ");
+
+                const NG = [
+                    "モデル", "改良", "最新版", "新型",
+                    "対応", "便利", "人気", "おすすめ",
+                    "静音", "大容量", "小型", "軽量",
+                    "コードレス", "家庭用", "車載"
+                ];
+
+                const filtered = words.filter(w => w.length > 1 && !NG.includes(w));
+
+                const candidates = [];
+
+                filtered.forEach(w => candidates.push(w));
+
+                for (let i = 0; i < filtered.length - 1; i++) {
+                    candidates.push(filtered[i] + " " + filtered[i + 1]);
+                }
+
+                if (filtered.length >= 3) {
+                    candidates.push(filtered.slice(0, 3).join(" "));
+                }
+
+                candidates.push(cleaned);
+
+                return [...new Set(candidates)];
+            }
+        
+            async function fetchProductByASIN(asin) {
+                const url = `https://www.amazon.co.jp/dp/${asin}`;
+                console.log("ASIN直接取得:", url);
+
+                const result = await fetchWithProxy(url);
+
+                if (result?.html && result.html.includes("/dp/")) {
+                    return { success: true, html: result.html, url };
+                }
+
+                return { success: false };
+            }
+
+            async function fetchProductByKeyword(title) {
+                const keywords = generateSearchKeywords(title);
+
+                for (const kw of keywords) {
+                    console.log("🔍 試行キーワード:", kw);
+
+                    const url = `https://www.amazon.co.jp/s?k=${encodeURIComponent(kw)}`;
+                    const result = await fetchWithProxy(url);
+
+                    if (result?.html && result.html.includes("/dp/")) {
+                        console.log("✅ 検索ヒット:", kw);
+                        return { success: true, html: result.html, keyword: kw };
+                    }
+                }
+
+                return { success: false };
+            }
+
+
+            async function fetchProductSmart(item) {
+                const { asin, title } = item;
+
+                console.log("=== 商品取得開始 ===");
+                console.log("ASIN:", asin);
+                console.log("タイトル:", title);
+
+                // 1. ASIN 直接取得（最優先）
+                const asinResult = await fetchProductByASIN(asin);
+                if (asinResult.success) {
+                    console.log("🎯 ASIN 直接取得成功");
+                    return asinResult.html;
+                }
+
+                console.log("⚠️ ASIN 直接取得失敗 → 検索 fallback 開始");
+
+                // 2. 検索 fallback
+                const searchResult = await fetchProductByKeyword(title);
+                if (searchResult.success) {
+                    console.log("🎯 検索 fallback 成功:", searchResult.keyword);
+                    return searchResult.html;
+                }
+
+                // 3. どちらもダメならスキップ
+                console.log("❌ 商品取得失敗 → スキップ");
+                return null;
+            }
+
         /* ============================================================
         🤖 AutoPosterManager v2.8（AI統合 × 完全自動化）
         ============================================================ */
@@ -1934,6 +2031,8 @@ ${tags}`;
                 this.log("⛔ 自動投稿を停止しました", "warning");
             }
 
+            
+
             /* ------------------------------------
             次の投稿処理（AI統合）
             ------------------------------------ */
@@ -1944,20 +2043,43 @@ ${tags}`;
                 this.log(`🔍 キーワード検索: ${keyword}`, "info");
 
                 try {
-                    // 商品検索（Workers版）
+
+                    // ▼ 商品リストが空ならランキングから取得
                     if (this.currentProductIndex === 0 || this.currentProducts.length === 0) {
-                        this.currentProducts = await this.searchProductsWithWorkers(keyword);
-                        if (this.currentProducts.length === 0) {
-                            this.log("⚠️ 商品が見つかりませんでした", "warning");
+
+                        const rankingItems = await getRankingFromHTML(keyword, 20);
+
+                        if (rankingItems.length === 0) {
+                            this.log("⚠️ ランキングから商品が取得できませんでした", "warning");
                             this.moveToNextKeyword();
                             return this.scheduleNext();
                         }
+
+                        const htmlList = [];
+
+                        for (const item of rankingItems) {
+                            const html = await fetchProductSmart(item);
+                            if (html) {
+                                htmlList.push({ html, asin: item.asin, title: item.title });
+                            }
+                        }
+
+                        if (htmlList.length === 0) {
+                            this.log("⚠️ 商品ページが取得できませんでした", "warning");
+                            this.moveToNextKeyword();
+                            return this.scheduleNext();
+                        }
+
+                        this.currentProducts = htmlList;
                     }
 
-                    const product = this.currentProducts[this.currentProductIndex];
-                    this.log(`📦 商品取得: ${product.title.substring(0, 30)}…`, "info");
+                    // ▼ 商品ページ HTML を解析
+                    const { html, asin, title } = this.currentProducts[this.currentProductIndex];
+                    this.log(`📦 商品取得: ${title.substring(0, 30)}…`, "info");
 
-                    // 🔥 AIで宣伝文生成（v2.8）
+                    const product = parseAmazonProduct(html);
+
+                    // ▼ AIで宣伝文生成
                     const postText = await this.generatePostText(product);
 
                     if (!postText) {
@@ -1966,7 +2088,7 @@ ${tags}`;
                         return;
                     }
 
-                    // 投稿
+                    // ▼ 投稿
                     this.openTwitterPost(postText);
 
                     this.stats.totalPosts++;
@@ -1976,7 +2098,6 @@ ${tags}`;
 
                     this.currentProductIndex++;
 
-                    // 次のキーワードへ
                     if (this.currentProductIndex >= this.currentProducts.length) {
                         this.moveToNextKeyword();
                     }
