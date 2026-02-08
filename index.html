@@ -1630,12 +1630,12 @@ ${tags}`;
                     return [];
                 }
 
-                // タイトル抽出（最初の1件はチャンネル名なので除外）
+                // タイトル抽出（最初の1件はチャンネル名）
                 const titles = [...xml.matchAll(/<title>(.*?)<\/title>/g)]
                     .map(m => m[1])
                     .slice(1);
 
-                // ASIN抽出（<link> から）
+                // リンク抽出（ASINはここから取る）
                 const links = [...xml.matchAll(/<link>(.*?)<\/link>/g)]
                     .map(m => m[1])
                     .slice(1);
