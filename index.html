@@ -1135,8 +1135,7 @@ ${shortUrl}
                 const tag = document.getElementById("tag-detailed").value || "yourtag-22";
                 const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
 
-                const model = document.getElementById("openrouter-model").value 
-                    || "meta-llama/llama-3.3-70b-instruct:free";   // ★ これが必要
+                const model = document.getElementById("openrouter-model").value || "meta-llama/llama-3.3-70b-instruct:free";
 
                 const prompt = `
             以下の商品をTwitter向けに魅力的に紹介する文章を作ってください。
