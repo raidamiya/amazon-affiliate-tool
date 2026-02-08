@@ -1636,7 +1636,7 @@ ${tags}`;
             ];
 
             /* ============================
-            v5.0 ランキングHTML → ASIN & タイトル取得
+            v5.0 ランキングHTML → ASIN & 正式タイトル取得
             ============================ */
             async function getRankingFromHTML(url, maxItems = 20) {
                 console.log("ランキングHTML取得開始:", url);
@@ -1650,24 +1650,67 @@ ${tags}`;
 
                 const html = result.html;
 
-                // ASIN 抽出
-                const asinMatches = [...html.matchAll(/\/dp\/([A-Z0-9]{10})/g)]
-                    .map(m => m[1]);
+                // 1) ASIN 抽出（ランキングページは data-asin がかなり素直に並ぶ）
+                const asinList = [...html.matchAll(/data-asin="([A-Z0-9]{10})"/g)]
+                    .map(m => m[1])
+                    .filter(Boolean);
 
-                // タイトル抽出（ランキングページの構造に合わせる）
-                const titleMatches = [...html.matchAll(/<img[^>]+alt="([^"]+)"[^>]*>/g)]
-                    .map(m => m[1]);
+                // 2) 正式タイトル候補を複数パターンで抜く
+                const titles = [];
 
-                const items = [];
-
-                for (let i = 0; i < asinMatches.length; i++) {
-                    items.push({
-                        asin: asinMatches[i],
-                        title: titleMatches[i] || "商品名不明"
-                    });
+                // パターンA: 旧ランキングレイアウトの title 属性付き div
+                const reDivTitle = /<div[^>]+class="[^"]*p13n-sc-truncate[^"]*"[^>]*title="([^"]+)"[^>]*>/g;
+                let m;
+                while ((m = reDivTitle.exec(html)) !== null) {
+                    titles.push(m[1].trim());
                 }
 
-                return items.slice(0, maxItems);
+                // パターンB: 新レイアウトの line-clamp 系クラス（テキストノード）
+                const reSpanClamp = /<div[^>]+class="[^"]*p13n-sc-css-line-clamp-3[^"]*"[^>]*>([\s\S]*?)<\/div>/g;
+                while ((m = reSpanClamp.exec(html)) !== null) {
+                    const text = m[1].replace(/<[^>]+>/g, "").trim();
+                    if (text) titles.push(text);
+                }
+
+                // パターンC: どうしても取れない場合のフォールバック（img alt）
+                if (titles.length < asinList.length) {
+                    const reImgAlt = /<img[^>]+alt="([^"]+)"[^>]*>/g;
+                    while ((m = reImgAlt.exec(html)) !== null) {
+                        const t = m[1].trim();
+                        if (t) titles.push(t);
+                    }
+                }
+
+                // 3) NGワードフィルタ（宣伝文・キャンペーン系を弾く）
+                const NG_WORDS = [
+                    "読み放題",
+                    "追加料金なし",
+                    "プライム会員",
+                    "セール",
+                    "キャンペーン",
+                    "ポイントアップ",
+                    "タイムセール",
+                    "クーポン"
+                ];
+
+                function isValidTitle(title) {
+                    return !NG_WORDS.some(ng => title.includes(ng));
+                }
+
+                const items = [];
+                const len = Math.min(asinList.length, titles.length);
+
+                for (let i = 0; i < len; i++) {
+                    const asin = asinList[i];
+                    const title = titles[i] || "商品名不明";
+
+                    if (!isValidTitle(title)) continue;
+
+                    items.push({ asin, title });
+                    if (items.length >= maxItems) break;
+                }
+
+                return items;
             }
 
 
