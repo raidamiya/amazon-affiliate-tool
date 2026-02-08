@@ -1939,12 +1939,7 @@ ${tags}`;
                     };
                 }
 
-                console.log("fetchProductSmart return:", {
-                success: true,
-                html: searchResult.html,
-                asin: searchResult.asin,
-                title
-            });
+                // 3. 完全に失敗した場合のみ false を返す
                 return { success: false };
             }
 
