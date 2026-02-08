@@ -1917,6 +1917,44 @@ ${tags}`;
                 return null;
             }
 
+            function parseAmazonProduct(html) {
+                const product = {};
+
+                // タイトル
+                const titleMatch = html.match(/<span id="productTitle"[^>]*>([\s\S]*?)<\/span>/);
+                product.title = titleMatch ? titleMatch[1].trim() : "商品名不明";
+
+                // 価格（複数パターン対応）
+                const priceMatch =
+                    html.match(/<span[^>]*class="a-price-whole"[^>]*>([\s\S]*?)<\/span>/) ||
+                    html.match(/<span[^>]*class="a-offscreen"[^>]*>([\s\S]*?)<\/span>/);
+                product.price = priceMatch ? priceMatch[1].trim() : "価格情報なし";
+
+                // 画像URL
+                const imgMatch = html.match(/"hiRes":"([^"]+)"/) ||
+                                html.match(/"large":"([^"]+)"/) ||
+                                html.match(/"mainUrl":"([^"]+)"/);
+                product.image = imgMatch ? imgMatch[1] : null;
+
+                // 商品説明（短め）
+                const descMatch = html.match(/<div id="feature-bullets"[\s\S]*?<ul[\s\S]*?>([\s\S]*?)<\/ul>/);
+                if (descMatch) {
+                    const bullets = [...descMatch[1].matchAll(/<span[^>]*>(.*?)<\/span>/g)]
+                        .map(m => m[1].trim())
+                        .filter(t => t.length > 0)
+                        .slice(0, 5); // 上位5つだけ
+                    product.description = bullets.join(" / ");
+                } else {
+                    product.description = "説明情報なし";
+                }
+
+                // ASIN
+                const asinMatch = html.match(/"asin":"([A-Z0-9]{10})"/);
+                product.asin = asinMatch ? asinMatch[1] : "ASIN不明";
+
+                return product;
+            }
+
         /* ============================================================
         🤖 AutoPosterManager v2.8（AI統合 × 完全自動化）
         ============================================================ */
