@@ -1957,9 +1957,17 @@ ${tags}`;
 
                 if (price1) price = price1[1].trim();
                 else if (price2) price = price2[1].trim();
-                else price = "価格情報なし";
+                else price = null;
 
                 product.price = price;
+
+                // 割引率（例: "-20%"）
+                const discountMatch = html.match(/savingsPercentage[^>]*>([^<]+)</);
+                product.discount = discountMatch ? discountMatch[1].trim() : null;
+
+                // ポイント（例: "328pt"）
+                const pointMatch = html.match(/([0-9,]+)pt/);
+                product.points = pointMatch ? pointMatch[1].trim() : null;
 
                 // 画像URL
                 let img = null;
@@ -1978,8 +1986,6 @@ ${tags}`;
 
                 if (descMatch && descMatch[1]) {
                     const raw = descMatch[1];
-
-                    // raw が空文字列の場合 matchAll は undefined を返すので安全に処理
                     const matches = raw.matchAll ? [...raw.matchAll(/<span[^>]*>(.*?)<\/span>/g)] : [];
 
                     const bullets = matches
@@ -2237,13 +2243,21 @@ ${tags}`;
                 【商品名】
                 ${product.title}
 
+                【価格】
+                ${product.price ? product.price + "円" : "価格情報なし"}
+
+                【割引】
+                ${product.discount || "割引情報なし"}
+
+                【ポイント】
+                ${product.points ? product.points + "pt" : "ポイント情報なし"}
+
                 【短縮URL】
                 ${shortUrl}
 
                 【厳守ルール】
                 - 出力は「宣伝文のみ」。説明・前置き・分析は禁止。
                 - 商品名を必ず1回以上含める
-                - 価格を文章に含めてはいけない（推測禁止）
                 - 箇条書きには ✔ を使用
                 - 絵文字は 2〜4 個
                 - ハッシュタグは日本語を優先し、#Amazon を含めて 2〜4 個
