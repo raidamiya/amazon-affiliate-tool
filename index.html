@@ -1948,7 +1948,7 @@ ${tags}`;
                 return { success: false };
             }
 
-            function parseAmazonProduct(html) {
+           function parseAmazonProduct(html) {
                 const product = {};
 
                 // タイトル
@@ -1981,13 +1981,18 @@ ${tags}`;
                 // 商品説明（feature bullets）
                 const descMatch = html.match(/<div id="feature-bullets"[\s\S]*?<ul[\s\S]*?>([\s\S]*?)<\/ul>/);
 
-                if (descMatch) {
-                    const bullets = [...descMatch[1].matchAll(/<span[^>]*>(.*?)<\/span>/g)]
+                if (descMatch && descMatch[1]) {
+                    const raw = descMatch[1];
+
+                    // raw が空文字列の場合 matchAll は undefined を返すので安全に処理
+                    const matches = raw.matchAll ? [...raw.matchAll(/<span[^>]*>(.*?)<\/span>/g)] : [];
+
+                    const bullets = matches
                         .map(m => m[1].trim())
                         .filter(t => t.length > 0)
                         .slice(0, 5);
 
-                    product.description = bullets.join(" / ");
+                    product.description = bullets.length > 0 ? bullets.join(" / ") : "説明情報なし";
                 } else {
                     product.description = "説明情報なし";
                 }
