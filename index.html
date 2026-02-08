@@ -1223,6 +1223,26 @@ ${shortUrl}
                 return await response.json();
             }
 
+            //3
+            async function fetchRSS(url) {
+                const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev/rss";
+
+                const response = await fetch(proxyUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "ngrok-skip-browser-warning": "true"
+                    },
+                    body: JSON.stringify({ url })
+                });
+
+                if (!response.ok) {
+                    throw new Error("RSS proxy failed: " + response.status);
+                }
+
+                return await response.json();
+            }
+
 
         /* ============================
            投稿文生成（URL指定タブ）
@@ -1616,21 +1636,21 @@ ${tags}`;
             async function getRankingFromRSS(rssUrl, maxItems = 20) {
                 console.log("RSS取得開始:", rssUrl);
 
-                const result = await fetchWithProxy(rssUrl);
+                const result = await fetchRSS(rssUrl);
 
-                // ★ RSSは result.html に入っている
-                const xml = result?.html;
-                if (!xml || typeof xml !== "string") {
+                if (!result || !result.html) {
                     console.error("RSS取得失敗:", rssUrl, result);
                     return [];
                 }
 
-                // タイトル抽出（最初の1件はチャンネル名）
+                const xml = result.html;
+
+                // タイトル抽出
                 const titles = [...xml.matchAll(/<title>(.*?)<\/title>/g)]
                     .map(m => m[1])
                     .slice(1);
 
-                // リンク抽出（ASINはここから取る）
+                // リンク抽出
                 const links = [...xml.matchAll(/<link>(.*?)<\/link>/g)]
                     .map(m => m[1])
                     .slice(1);
