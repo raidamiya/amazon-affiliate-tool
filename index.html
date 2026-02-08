@@ -1893,8 +1893,12 @@ ${tags}`;
                     const productResult = await fetchWithProxy(productUrl);
 
                     if (productResult?.html && productResult.html.includes("/dp/")) {
-                        console.log("✅ 検索 fallback 成功:", kw);
-                        return { success: true, html: productResult.html, asin, keyword: kw };
+                        return {
+                            success: true,
+                            html: productResult.html,
+                            asin,
+                            keyword: kw
+                        };
                     }
                 }
 
