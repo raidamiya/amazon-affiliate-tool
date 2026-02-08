@@ -1990,10 +1990,25 @@ ${tags}`;
                 const discountMatch = html.match(/savingsPercentage[^>]*>([^<]+)</);
                 product.discount = discountMatch ? discountMatch[1].trim() : null;
 
-                // ポイント
-                const pointMatch = html.match(/([0-9,]+)pt/);
-                product.points = pointMatch ? pointMatch[1].trim() : null;
+                
+                // -----------------------------
+                // ④ ポイント（複数パターン対応）
+                // -----------------------------
+                let points = null;
 
+                // パターン1: "328ポイント"
+                let m1 = html.match(/([0-9,]+)\s*ポイント/);
+                // パターン2: "328pt"
+                let m2 = html.match(/([0-9,]+)\s*pt/);
+                // パターン3: "ポイント: 328pt"
+                let m3 = html.match(/ポイント[^0-9]*([0-9,]+)\s*pt/);
+                // パターン4: "獲得ポイント: 328pt"
+                let m4 = html.match(/獲得ポイント[^0-9]*([0-9,]+)\s*pt/);
+                // パターン5: "ポイント:" の後にタグが入る
+                let m5 = html.match(/ポイント[^<]*<[^>]*>([0-9,]+)\s*pt/);
+                points = (m1?.[1] || m2?.[1] || m3?.[1] || m4?.[1] || m5?.[1]) || null;
+
+                product.points = points;
                 // 画像URL
                 let img = null;
                 const img1 = html.match(/"hiRes":"([^"]+)"/);
@@ -2407,6 +2422,7 @@ ${tags}`;
                 /* ============================
                 v3.0 安定版プロンプト
                 ============================ */
+                const pointText = product.points ? `${product.points}pt` : "";
                 const prompt = `
                 あなたは日本のSNSマーケティング専門家です。
                 以下の商品情報を基に、X（Twitter）向けの宣伝文を1つだけ生成してください。
@@ -2421,8 +2437,7 @@ ${tags}`;
                 ${product.discount || "割引情報なし"}
 
                 【ポイント】
-                ${product.points ? product.points + "pt" : "ポイント情報なし"}
-
+                ${pointText}
                 【短縮URL】
                 ${shortUrl}
 
@@ -2460,9 +2475,11 @@ ${tags}`;
                         .trim();
 
                     // ハッシュタグ整形（URL の # を壊さない）
-                    // ハッシュタグ整形（URL の # を壊さない）
-                    finalText = finalText.replace(/(^|\s)(#\w+)/g, " $2");
-
+                    finalText = finalText.replace(/(^|\s)(#\w+)/g, "$1$2");
+                    // ポイントが無い商品の場合だけ「ポイント」を含む行を削除
+                    if (!product.points) {
+                        finalText = finalText.replace(/.*ポイント.*/g, "");
+                    }
                     // URL が消えていたら最後に追加
                     if (!finalText.includes(url)) {
                         finalText += "\n" + url;
