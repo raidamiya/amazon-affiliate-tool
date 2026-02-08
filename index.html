@@ -1636,7 +1636,7 @@ ${tags}`;
             async function getRankingFromRSS(rssUrl, maxItems = 20) {
                 console.log("RSS取得開始:", rssUrl);
 
-                const result = await fetchRSS(rssUrl);
+                const result = await fetchRSS(rssUrl);  // ★ ここが重要
 
                 if (!result || !result.html) {
                     console.error("RSS取得失敗:", rssUrl, result);
