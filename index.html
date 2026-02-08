@@ -1232,6 +1232,8 @@ ${shortUrl}
 
             //3
             async function fetchRSS(url) {
+                console.log("fetchRSS CALLED:", url);   // ★ 追加
+
                 const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev/rss";
 
                 const response = await fetch(proxyUrl, {
@@ -1243,11 +1245,16 @@ ${shortUrl}
                     body: JSON.stringify({ url })
                 });
 
+                console.log("fetchRSS response status:", response.status);  // ★ 追加
+
                 if (!response.ok) {
                     throw new Error("RSS proxy failed: " + response.status);
                 }
 
-                return await response.json();
+                const json = await response.json();
+                console.log("fetchRSS result:", json);  // ★ 追加
+
+                return json;
             }
 
 
