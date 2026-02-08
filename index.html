@@ -1569,19 +1569,33 @@ ${tags}`;
             v3.4 詳細ページ → 価格取得
             ============================ */
             async function getPriceFromDetailPage(asin) {
-                const detailUrl = `https://www.amazon.co.jp/dp/${asin}`;
-                const html = await fetchWithProxy(detailUrl);
+                const url = `https://www.amazon.co.jp/dp/${asin}`;
+                const result = await fetchWithProxy({ url });
 
-                const parser = new DOMParser();
-                const doc = parser.parseFromString(html, "text/html");
+                if (!result || !result.html) return null;
 
-                const priceElem = doc.querySelector(".a-price .a-offscreen");
-                if (!priceElem) return null;
+                const html = result.html;
 
-                const m = priceElem.textContent.match(/[\d,]+/);
-                if (!m) return null;
+                // 1. 新しい価格 DOM
+                let match = html.match(/id="corePrice_feature_div"[\s\S]*?class="a-price[^"]*"[\s\S]*?class="a-offscreen">([^<]+)</);
+                if (match && match[1]) {
+                    return match[1].trim();
+                }
 
-                return parseInt(m[0].replace(/,/g, "")) + "円";
+                // 2. 旧 DOM（ourprice）
+                match = html.match(/id="priceblock_ourprice"[^>]*>([^<]+)/);
+                if (match && match[1]) {
+                    return match[1].trim();
+                }
+
+                // 3. 旧 DOM（dealprice）
+                match = html.match(/id="priceblock_dealprice"[^>]*>([^<]+)/);
+                if (match && match[1]) {
+                    return match[1].trim();
+                }
+
+                // 4. 価格が見つからない場合
+                return null;
             }
 
             /* ============================
