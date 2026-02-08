@@ -1909,11 +1909,17 @@ ${tags}`;
                 console.log("ASIN:", asin);
                 console.log("タイトル:", title);
 
-                // 1. ASIN 直接取得（最優先）
-                const asinResult = await fetchProductByASIN(asin);
-                if (asinResult.success) {
-                    console.log("🎯 ASIN 直接取得成功");
-                    return asinResult.html;
+                // 1. ASIN 直接取得
+                if (asin) {
+                    const asinResult = await fetchProductByASIN(asin);
+                    if (asinResult.success) {
+                        return {
+                            success: true,
+                            html: asinResult.html,
+                            asin,
+                            title
+                        };
+                    }
                 }
 
                 console.log("⚠️ ASIN 直接取得失敗 → 検索 fallback 開始");
@@ -1921,13 +1927,15 @@ ${tags}`;
                 // 2. 検索 fallback
                 const searchResult = await fetchProductByKeyword(title);
                 if (searchResult.success) {
-                    console.log("🎯 検索 fallback 成功:", searchResult.keyword);
-                    return searchResult.html;
+                    return {
+                        success: true,
+                        html: searchResult.html,
+                        asin: searchResult.asin,
+                        title
+                    };
                 }
 
-                // 3. どちらもダメならスキップ
-                console.log("❌ 商品取得失敗 → スキップ");
-                return null;
+                return { success: false };
             }
 
             function parseAmazonProduct(html) {
