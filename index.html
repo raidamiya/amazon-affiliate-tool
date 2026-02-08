@@ -2195,10 +2195,14 @@ ${tags}`;
                 const useAI = document.getElementById("auto-use-ai").checked;
                 const tag = document.getElementById("tag-auto").value.trim();
 
-                const asin = extractASIN(product.url);
+                // ❌ const asin = extractASIN(product.url);
+                // product.url は存在しない
+
+                // ✔ 正しい
+                const asin = product.asin;
+
                 const affiliateUrl = `https://www.amazon.co.jp/dp/${asin}?tag=${tag}`;
                 const shortUrl = await shortenUrl(affiliateUrl);
-
                 /* ============================
                 AIを使わない場合
                 ============================ */
