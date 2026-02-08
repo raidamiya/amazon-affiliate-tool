@@ -2477,8 +2477,16 @@ ${tags}`;
 
                 } catch (e) {
                     this.log("❌ AI生成失敗: " + e.message, "error");
-                    return null;
+
+                    // ★ フォールバック投稿文
+                    const safeTitle = [...product.title].slice(0, 30).join("");
+                        
+                    const fallback = `${safeTitle}\n【価格】${product.price || "価格情報なし"}\n${shortUrl}`;
+
+                    this.log("⚠️ フォールバック投稿を使用します", "warn");
+                    return fallback;
                 }
+
             }
 
             /* ------------------------------------
