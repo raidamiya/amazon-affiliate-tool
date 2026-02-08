@@ -1129,41 +1129,41 @@ ${shortUrl}
 
             async function generatePostText(product) {
                 const apiKey = document.getElementById("ai-api-key").value;
-                if (!apiKey) throw new Error("APIキーが設定されていません");
+
+                const tag = document.getElementById("tag-detailed").value || "yourtag-22";
+                const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
 
                 const prompt = `
-            以下の商品をTwitter向けに魅力的に紹介する文章を作ってください。
+            あなたはSNSマーケティングのプロです。
+            以下の商品をTwitter向けに「売れる投稿」として最適化してください。
 
             【商品名】
             ${product.title}
 
-            【価格】
-            ${product.price || "価格情報なし"}
-
             【ASIN】
             ${product.asin}
 
+            【価格】
+            ${product.price || "価格情報なし"}
+
+            【条件】
             ・140文字以内
-            ・絵文字を適度に使用
-            ・購入意欲を高める
-            ・最後にAmazonリンクを付ける
+            ・読みやすく、購入意欲を高める構成
+            ・絵文字は2〜5個、自然に使う
+            ・メリットを1つだけ短く強調
+            ・最後に「詳しくはこちら👇」を入れる
+            ・リンクは文末にそのまま貼る（短縮しない）
+            ・ハッシュタグは使わない
+            ・煽りすぎない、自然なテンション
+
+            【出力形式】
+            文章のみ（リンクは最後に改行して貼る）
             `;
 
-                const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev/openai";
+                const data = await fetchOpenAI(apiKey, prompt);
 
-                const response = await fetch(proxyUrl, {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ apiKey, prompt })
-                });
-
-                const data = await response.json();
                 const text = data.choices?.[0]?.message?.content?.trim();
-
                 if (!text) throw new Error("AI生成に失敗しました");
-
-                const tag = document.getElementById("tag-detailed").value || "yourtag-22";
-                const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
 
                 return `${text}\n${url}`;
             }
@@ -1201,6 +1201,25 @@ ${shortUrl}
 
                 if (!response.ok) {
                     throw new Error("Proxy fetch failed: " + response.status);
+                }
+
+                return await response.json();
+            }
+            //2------
+            async function fetchOpenAI(apiKey, prompt) {
+                const proxyUrl = "https://adventurously-clavate-kourtney.ngrok-free.dev/openai";
+
+                const response = await fetch(proxyUrl, {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json",
+                        "ngrok-skip-browser-warning": "true"
+                    },
+                    body: JSON.stringify({ apiKey, prompt })
+                });
+
+                if (!response.ok) {
+                    throw new Error("OpenAI proxy failed: " + response.status);
                 }
 
                 return await response.json();
