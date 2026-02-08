@@ -1618,15 +1618,10 @@ ${tags}`;
 
                 const result = await fetchWithProxy(rssUrl);
 
-                if (!result || !result.html) {
-                    console.error("RSS取得失敗:", rssUrl);
-                    return [];
-                }
-
-                const xml = result.html;
-
-                if (typeof xml !== "string") {
-                    console.error("RSSが文字列ではありません:", typeof xml);
+                // ★ RSSは result.html に入っている
+                const xml = result?.html;
+                if (!xml || typeof xml !== "string") {
+                    console.error("RSS取得失敗:", rssUrl, result);
                     return [];
                 }
 
