@@ -1861,8 +1861,8 @@ ${tags}`;
                 const url = `https://www.amazon.co.jp/dp/${asin}`;
                 console.log("ASIN直接取得:", url);
 
-               const result = await fetchWithProxy({ url });
-
+                const result = await fetchWithProxy({ url });
+                console.log("ASIN fetch result:", result);
                 if (result?.html && result.html.includes("/dp/")) {
                     return { success: true, html: result.html, url };
                 }
@@ -1891,7 +1891,7 @@ ${tags}`;
                     // ▼ 抽出した ASIN で商品ページを再取得
                     const productUrl = `https://www.amazon.co.jp/dp/${asin}`;
                     const productResult = await fetchWithProxy({ url: productUrl });
-
+                    console.log("Product fetch result:", productResult);
                     if (productResult?.html && productResult.html.includes("/dp/")) {
                         return {
                             success: true,
