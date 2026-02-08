@@ -2005,6 +2005,13 @@ ${tags}`;
                 return product;
             }
 
+            function shuffleArray(array) {
+                for (let i = array.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [array[i], array[j]] = [array[j], array[i]];
+                }
+            }
+
         /* ============================================================
         🤖 AutoPosterManager v2.8（AI統合 × 完全自動化）
         ============================================================ */
@@ -2044,6 +2051,23 @@ ${tags}`;
                 }
             }
 
+
+            // ▼ 投稿済みキーワードを保存
+            savePostedKeyword(keyword) {
+                try {
+                    const raw = localStorage.getItem("postedKeywords") || "[]";
+                    const posted = JSON.parse(raw);
+
+                    // 重複登録は避ける
+                    if (!posted.includes(keyword)) {
+                        posted.push(keyword);
+                        localStorage.setItem("postedKeywords", JSON.stringify(posted));
+                    }
+                } catch (e) {
+                    console.warn("postedKeywords の保存に失敗:", e);
+                }
+            }
+
             /* ------------------------------------
             自動投稿開始（v2.8 + Amazonランキング対応）
             ------------------------------------ */
@@ -2069,6 +2093,17 @@ ${tags}`;
                         this.keywords = [];
                     } else {
                         this.keywords = keywords;
+                        // ▼ 投稿済みキーワードを除外
+                        try {
+                            const raw = localStorage.getItem("postedKeywords") || "[]";
+                            const posted = JSON.parse(raw);
+                            this.keywords = this.keywords.filter(k => !posted.includes(k));
+                        } catch (e) {
+                            console.warn("postedKeywords の読み込みに失敗:", e);
+                        }
+
+                        // ▼ ランダム化
+                        shuffleArray(this.keywords);
                         this.log(`✨ 人気ワード ${keywords.length} 件を取得しました`, "success");
                     }
                 }else {
@@ -2178,9 +2213,9 @@ ${tags}`;
                     this.stats.successPosts++;
 
                     this.log("🐦 投稿完了", "success");
-
+                    
+                    this.savePostedKeyword(keyword);
                     this.currentProductIndex++;
-
                     if (this.currentProductIndex >= this.currentProducts.length) {
                         this.moveToNextKeyword();
                     }
