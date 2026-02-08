@@ -2044,33 +2044,24 @@ ${tags}`;
 
                 try {
 
-                    // ▼ 商品リストが空ならランキングから取得
+                    // ▼ 商品リストが空なら「キーワード検索」ではなく
+                    //    すでに start() で作った this.keywords を使う
                     if (this.currentProductIndex === 0 || this.currentProducts.length === 0) {
 
-                        const rankingItems = await getRankingFromHTML(keyword, 20);
+                        // ▼ キーワードを「商品タイトル」として扱う
+                        const item = { asin: null, title: keyword };
 
-                        if (rankingItems.length === 0) {
-                            this.log("⚠️ ランキングから商品が取得できませんでした", "warning");
-                            this.moveToNextKeyword();
-                            return this.scheduleNext();
-                        }
+                        // ▼ ASIN → 検索 fallback → スキップ
+                        const html = await fetchProductSmart(item);
 
-                        const htmlList = [];
-
-                        for (const item of rankingItems) {
-                            const html = await fetchProductSmart(item);
-                            if (html) {
-                                htmlList.push({ html, asin: item.asin, title: item.title });
-                            }
-                        }
-
-                        if (htmlList.length === 0) {
+                        if (!html) {
                             this.log("⚠️ 商品ページが取得できませんでした", "warning");
                             this.moveToNextKeyword();
                             return this.scheduleNext();
                         }
 
-                        this.currentProducts = htmlList;
+                        // ▼ 商品ページを currentProducts に保存
+                        this.currentProducts = [{ html, asin: item.asin, title: item.title }];
                     }
 
                     // ▼ 商品ページ HTML を解析
