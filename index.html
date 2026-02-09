@@ -1155,6 +1155,7 @@ ${shortUrl}
                     return [];
                 }
 
+                // 検索結果から ASIN と画像だけ取る
                 const blocks = [...html.matchAll(/<div[^>]+data-asin="([A-Z0-9]{10})"[^>]*>([\s\S]*?)<\/div>/g)];
 
                 const results = [];
@@ -1164,54 +1165,23 @@ ${shortUrl}
                     const block = match[2];
                     if (!asin) continue;
 
+                    // タイトル（検索結果の alt でOK）
                     const title = extractTitle(block);
 
+                    // 画像
                     const imgMatch = block.match(/<img[^>]+src="([^"]+)"[^>]*>/);
                     const image = imgMatch ? imgMatch[1] : "";
 
-                    // ★ まず検索結果ページから価格を試す（高速）
-                    let price = null;
+                    // ★ 商品詳細ページを取得して parseAmazonProduct で解析
+                    const detail = await fetchWithProxy({ url: `https://www.amazon.co.jp/dp/${asin}` });
+                    const product = parseAmazonProduct(detail.html);
 
-                    // パターン1: a-offscreen（最も正確）
-                    const p1 = block.match(/<span class="a-offscreen">([^<]+)<\/span>/);
-                    if (p1) price = p1[1].replace(/[^\d]/g, "");
+                    // ★ 検索結果の画像を優先（高確率で綺麗）
+                    if (image) product.image = image;
 
-                    // パターン2: a-price-whole
-                    if (!price) {
-                        const p2 = block.match(/<span class="a-price-whole">([^<]+)<\/span>/);
-                        if (p2) price = p2[1].replace(/[^\d]/g, "");
-                    }
+                    results.push(product);
 
-                    // ★ 割引率（検索結果ページ対応）
-                    let discount = null;
-                    const d1 = block.match(/<span[^>]*class="a-color-price"[^>]*>([^<%]+%?)<\/span>/);
-                    if (d1 && d1[1]) discount = d1[1].trim();
-
-                    // ★ 星評価
-                    const ratingMatch = block.match(/<span class="a-icon-alt">([^<]+)<\/span>/);
-                    const rating = ratingMatch ? ratingMatch[1] : null;
-
-                    // ★ レビュー数
-                    const reviewMatch = block.match(/<span[^>]*class="a-size-base s-underline-text">([^<]+)<\/span>/);
-                    const reviewCount = reviewMatch ? reviewMatch[1].replace(/[^\d]/g, "") : null;
-
-                    // ★ 価格が取れなかった商品だけ詳細ページを見る（高速化）
-                    if (!price) {
-                        const priceRaw = await getPriceFromDetailPage(asin);
-                        price = priceRaw ? priceRaw.replace(/[^\d]/g, "") : null;
-                    }
-
-                    results.push({
-                        asin,
-                        title,
-                        image,
-                        price,
-                        discount,
-                        rating,
-                        reviewCount
-                    });
-
-                    // ★ 5件で打ち切り（高速化）
+                    // 5件で打ち切り
                     if (results.length >= 5) break;
                 }
 
@@ -1276,14 +1246,22 @@ ${shortUrl}
                 openTwitterPost(postText);
             }
 
-            //単体投稿版
+
+            // 単体投稿版（v5.1 完全版）
             async function generatePostText(product) {
                 const apiKey = localStorage.getItem("openrouterApiKey");
                 const tag = document.getElementById("tag-detailed").value || "yourtag-22";
-                const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
+
+                // ★ URL生成（短縮URL対応）
+                let url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
+                const useShort = document.getElementById("use-short-url")?.checked;
+                if (useShort) {
+                    const short = await shortenUrl(url);
+                    if (short) url = short;
+                }
+
                 // ★ 単体版はモデル固定
                 const model = "stepfun/step-3.5-flash:free";
-
 
                 const pointText = product.points ? `${product.points}pt` : "";
 
@@ -1303,7 +1281,7 @@ ${shortUrl}
             【ポイント】
             ${pointText}
 
-            【短縮URL】
+            【URL】
             ${url}
 
             【厳守ルール】
@@ -1316,8 +1294,8 @@ ${shortUrl}
             - 5行目：URL を文末に置く
             - 絵文字は 2〜4 個
             - 英語タグは禁止
-            - 割引率や価格の再計算は禁止。計算結果を出力しない。
-            - 180 文字以内
+            - 割引率や価格の再計算は禁止（計算結果を出力しない）
+            - 180文字以内
             - 宣伝文以外の文章を一切出力しない
 
             【出力形式】
@@ -1330,7 +1308,7 @@ ${shortUrl}
                     throw new Error("AI生成に失敗しました");
                 }
 
-                // 後処理（自動投稿版と同じ）
+                // ★ 後処理（自動投稿と同じ）
                 let finalText = aiText
                     .replace(/はい、.+?。/g, "")
                     .replace(/以下.+?:/gi, "")
