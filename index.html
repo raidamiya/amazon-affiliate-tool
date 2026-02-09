@@ -1117,6 +1117,27 @@ ${shortUrl}
                 return keywords;
             }
 
+            // ★ タイトル抽出を4パターン対応に強化
+            function extractTitle(block) {
+                // パターン1（標準）
+                let m = block.match(/<span class="a-size-medium a-color-base a-text-normal">([^<]+)<\/span>/);
+                if (m) return m[1].trim();
+
+                // パターン2（小型）
+                m = block.match(/<span class="a-size-base-plus a-color-base a-text-normal">([^<]+)<\/span>/);
+                if (m) return m[1].trim();
+
+                // パターン3（画像 alt）
+                m = block.match(/<img[^>]+alt="([^"]+)"[^>]*>/);
+                if (m) return m[1].trim();
+
+                // パターン4（リンク内）
+                m = block.match(/<a[^>]+class="a-link-normal[^"]*"[^>]*>([^<]+)<\/a>/);
+                if (m) return m[1].trim();
+
+                return "商品名不明";
+            }
+
             async function detailedSearch(keyword) {
                 if (!keyword) {
                     document.getElementById("error-detailed").textContent = "キーワードを入力してください";
@@ -1145,27 +1166,26 @@ ${shortUrl}
 
                     if (!asin) continue;
 
-                    // 商品名
-                    const titleMatch = block.match(/<span class="a-size-medium a-color-base a-text-normal">([^<]+)<\/span>/);
-                    const title = titleMatch ? titleMatch[1].trim() : "商品名不明";
+                    // ★ 強化版タイトル抽出
+                    const title = extractTitle(block);
 
-                    // 画像URL
+                    // ★ 画像URL（安定版）
                     const imgMatch = block.match(/<img[^>]+src="([^"]+)"[^>]*>/);
                     const image = imgMatch ? imgMatch[1] : "";
 
-                    // 価格
+                    // ★ 価格（カンマ除去）
                     const priceMatch = block.match(/<span class="a-price-whole">([^<]+)<\/span>/);
                     const price = priceMatch ? priceMatch[1].replace(/[^\d]/g, "") : null;
 
-                    // 割引
+                    // ★ 割引（%OFF など）
                     const discountMatch = block.match(/<span class="a-color-price">([^<]+)<\/span>/);
                     const discount = discountMatch ? discountMatch[1].trim() : null;
 
-                    // 星評価
+                    // ★ 星評価
                     const ratingMatch = block.match(/<span class="a-icon-alt">([^<]+)<\/span>/);
                     const rating = ratingMatch ? ratingMatch[1] : null;
 
-                    // レビュー数
+                    // ★ レビュー数（強化版）
                     const reviewMatch = block.match(/<span[^>]*class="a-size-base s-underline-text">([^<]+)<\/span>/);
                     const reviewCount = reviewMatch ? reviewMatch[1].replace(/[^\d]/g, "") : null;
 
@@ -1244,13 +1264,14 @@ ${shortUrl}
                 openTwitterPost(postText);
             }
 
-
+            //単体投稿版
             async function generatePostText(product) {
                 const apiKey = localStorage.getItem("openrouterApiKey");
                 const tag = document.getElementById("tag-detailed").value || "yourtag-22";
                 const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
-                const model = document.getElementById("openrouter-model").value 
-                    || "meta-llama/llama-3.3-70b-instruct:free";
+                // ★ 単体版はモデル固定
+                const model = "stepfun/step-3.5-flash:free";
+
 
                 const pointText = product.points ? `${product.points}pt` : "";
 
