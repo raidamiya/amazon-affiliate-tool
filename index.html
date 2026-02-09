@@ -1276,11 +1276,9 @@ ${shortUrl}
 
                 // ★ URL生成（短縮URL対応）
                 let url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
-                const useShort = document.getElementById("use-short-url")?.checked;
-                if (useShort) {
-                    const short = await shortenUrl(url);
-                    if (short) url = short;
-                }
+                
+                const short = await shortenUrl(url);
+                if (short) url = short;
 
                 // ★ 単体版はモデル固定
                 const model = "stepfun/step-3.5-flash:free";
