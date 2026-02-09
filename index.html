@@ -1155,7 +1155,6 @@ ${shortUrl}
                     return [];
                 }
 
-                // 商品ブロック抽出
                 const blocks = [...html.matchAll(/<div[^>]+data-asin="([A-Z0-9]{10})"[^>]*>([\s\S]*?)<\/div>/g)];
 
                 const results = [];
@@ -1163,29 +1162,27 @@ ${shortUrl}
                 for (const match of blocks) {
                     const asin = match[1];
                     const block = match[2];
-
                     if (!asin) continue;
 
-                    // ★ 強化版タイトル抽出
                     const title = extractTitle(block);
 
-                    // ★ 画像URL（安定版）
                     const imgMatch = block.match(/<img[^>]+src="([^"]+)"[^>]*>/);
                     const image = imgMatch ? imgMatch[1] : "";
 
-                    // ★ 価格（カンマ除去）
-                    const priceMatch = block.match(/<span class="a-price-whole">([^<]+)<\/span>/);
-                    const price = priceMatch ? priceMatch[1].replace(/[^\d]/g, "") : null;
+                    // ★ ここを差し替え：a-offscreen から価格を取る
+                    let price = null;
+                    const priceOffscreenMatch = block.match(/<span class="a-offscreen">([^<]+)<\/span>/);
+                    if (priceOffscreenMatch) {
+                        // 例: "￥2,170" → "2170"
+                        price = priceOffscreenMatch[1].replace(/[^\d]/g, "");
+                    }
 
-                    // ★ 割引（%OFF など）
                     const discountMatch = block.match(/<span class="a-color-price">([^<]+)<\/span>/);
                     const discount = discountMatch ? discountMatch[1].trim() : null;
 
-                    // ★ 星評価
                     const ratingMatch = block.match(/<span class="a-icon-alt">([^<]+)<\/span>/);
                     const rating = ratingMatch ? ratingMatch[1] : null;
 
-                    // ★ レビュー数（強化版）
                     const reviewMatch = block.match(/<span[^>]*class="a-size-base s-underline-text">([^<]+)<\/span>/);
                     const reviewCount = reviewMatch ? reviewMatch[1].replace(/[^\d]/g, "") : null;
 
@@ -1200,13 +1197,9 @@ ${shortUrl}
                     });
                 }
 
-                // 上位10件に絞る
                 const limited = results.slice(0, 10);
-
                 console.log("詳細検索結果（10件）:", limited);
-
                 renderDetailedResults(limited);
-
                 return limited;
             }
 
