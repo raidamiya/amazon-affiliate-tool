@@ -230,6 +230,40 @@
         .info.show {
             display: block;
         }
+
+        .product-card {
+            display: flex;
+            gap: 12px;
+            padding: 12px;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            background: #fff;
+        }
+
+        .product-image {
+            width: 120px;
+            height: 120px;
+            object-fit: contain;
+        }
+
+        .product-info {
+            flex: 1;
+        }
+
+        .product-title {
+            font-weight: bold;
+            margin-bottom: 4px;
+        }
+
+        .product-price,
+        .product-discount,
+        .product-rating,
+        .product-review {
+            font-size: 14px;
+            margin-bottom: 4px;
+        }
+
     </style>
 </head>
 
@@ -1085,7 +1119,6 @@ ${shortUrl}
 
             async function detailedSearch(keyword) {
                 if (!keyword) {
-                    console.warn("detailedSearch: keyword が未入力です");
                     document.getElementById("error-detailed").textContent = "キーワードを入力してください";
                     return;
                 }
@@ -1101,26 +1134,57 @@ ${shortUrl}
                     return [];
                 }
 
-                const asinMatches = [...html.matchAll(/data-asin="([A-Z0-9]{10})"/g)];
-                const asinList = asinMatches.map(m => m[1]);
-
-                const titleMatches = [...html.matchAll(/<img[^>]*alt="([^"]+)"[^>]*>/g)];
-                const titleList = titleMatches.map(m => m[1].trim());
+                // 商品ブロック抽出
+                const blocks = [...html.matchAll(/<div[^>]+data-asin="([A-Z0-9]{10})"[^>]*>([\s\S]*?)<\/div>/g)];
 
                 const results = [];
-                for (let i = 0; i < asinList.length; i++) {
+
+                for (const match of blocks) {
+                    const asin = match[1];
+                    const block = match[2];
+
+                    if (!asin) continue;
+
+                    // 商品名
+                    const titleMatch = block.match(/<span class="a-size-medium a-color-base a-text-normal">([^<]+)<\/span>/);
+                    const title = titleMatch ? titleMatch[1].trim() : "商品名不明";
+
+                    // 画像URL
+                    const imgMatch = block.match(/<img[^>]+src="([^"]+)"[^>]*>/);
+                    const image = imgMatch ? imgMatch[1] : "";
+
+                    // 価格
+                    const priceMatch = block.match(/<span class="a-price-whole">([^<]+)<\/span>/);
+                    const price = priceMatch ? priceMatch[1].replace(/[^\d]/g, "") : null;
+
+                    // 割引
+                    const discountMatch = block.match(/<span class="a-color-price">([^<]+)<\/span>/);
+                    const discount = discountMatch ? discountMatch[1].trim() : null;
+
+                    // 星評価
+                    const ratingMatch = block.match(/<span class="a-icon-alt">([^<]+)<\/span>/);
+                    const rating = ratingMatch ? ratingMatch[1] : null;
+
+                    // レビュー数
+                    const reviewMatch = block.match(/<span[^>]*class="a-size-base s-underline-text">([^<]+)<\/span>/);
+                    const reviewCount = reviewMatch ? reviewMatch[1].replace(/[^\d]/g, "") : null;
+
                     results.push({
-                        asin: asinList[i],
-                        title: titleList[i] || "商品名不明"
+                        asin,
+                        title,
+                        image,
+                        price,
+                        discount,
+                        rating,
+                        reviewCount
                     });
                 }
 
-                // 🔥 ここで 10 件に絞る
+                // 上位10件に絞る
                 const limited = results.slice(0, 10);
 
                 console.log("詳細検索結果（10件）:", limited);
 
-                // UI に描画
                 renderDetailedResults(limited);
 
                 return limited;
@@ -1139,13 +1203,26 @@ ${shortUrl}
                 items.forEach(item => {
                     const div = document.createElement("div");
                     div.className = "product-item";
+
                     div.innerHTML = `
-                        <div class="product-title">${item.title}</div>
-                        <div class="product-asin">ASIN: ${item.asin}</div>
-                        <button class="btn btn-primary" onclick="postSingleProduct('${item.asin}', '${item.title.replace(/'/g, "\\'")}')">
-                            🐦 この商品を投稿
-                        </button>
+                        <div class="product-card">
+                            <img src="${item.image}" class="product-image" alt="${item.title}">
+                            <div class="product-info">
+                                <div class="product-title">${item.title}</div>
+                                <div class="product-asin">ASIN: ${item.asin}</div>
+                                <div class="product-price">価格: ${item.price ? item.price + "円" : "不明"}</div>
+                                <div class="product-discount">${item.discount ? "割引: " + item.discount : ""}</div>
+                                <div class="product-rating">${item.rating ? "評価: " + item.rating : ""}</div>
+                                <div class="product-review">${item.reviewCount ? "レビュー: " + item.reviewCount : ""}</div>
+
+                                <button class="btn btn-primary"
+                                    onclick="postSingleProduct('${item.asin}', '${item.title.replace(/'/g, "\\'")}')">
+                                    🐦 この商品を投稿
+                                </button>
+                            </div>
+                        </div>
                     `;
+
                     container.appendChild(div);
                 });
 
@@ -1172,27 +1249,80 @@ ${shortUrl}
                 const apiKey = localStorage.getItem("openrouterApiKey");
                 const tag = document.getElementById("tag-detailed").value || "yourtag-22";
                 const url = `https://www.amazon.co.jp/dp/${product.asin}/?tag=${tag}`;
-                const models = document.getElementById("openrouter-model").value || "meta-llama/llama-3.3-70b-instruct:free";
+                const model = document.getElementById("openrouter-model").value 
+                    || "meta-llama/llama-3.3-70b-instruct:free";
+
+                const pointText = product.points ? `${product.points}pt` : "";
 
                 const prompt = `
-            以下の商品をTwitter向けに魅力的に紹介する文章を作ってください。
+            あなたは日本のSNSマーケティング専門家です。
+            以下の商品情報を基に、X（Twitter）向けの宣伝文を1つだけ生成してください。
 
-            商品名: ${product.title}
-            ASIN: ${product.asin}
-            価格: ${product.price}
+            【商品名】
+            ${product.title}
 
-            140文字以内でお願いします。
-            `;
+            【価格】
+            ${product.price ? product.price + "円" : "価格情報なし"}
 
-                let text = await callOpenRouterAPI(apiKey, prompt, models);
+            【割引】
+            ${product.discount || "割引情報なし"}
 
-                if (!text) {
+            【ポイント】
+            ${pointText}
+
+            【短縮URL】
+            ${url}
+
+            【厳守ルール】
+            - 出力は「宣伝文のみ」。説明・前置き・分析は禁止。
+            - 文章は3〜5行構成にする（改行を必ず入れる）
+            - 1行目：商品の魅力を短くキャッチーに
+            - 2行目：特徴を ✔ 箇条書きで2〜3個
+            - 3行目：価格・割引・ポイントを自然にまとめる（※価格は変動する可能性があります と添える）
+            - 4行目：ハッシュタグ（日本語優先、#Amazon を含めて 2〜4 個）
+            - 5行目：URL を文末に置く
+            - 絵文字は 2〜4 個
+            - 英語タグは禁止
+            - 割引率や価格の再計算は禁止。計算結果を出力しない。
+            - 180 文字以内
+            - 宣伝文以外の文章を一切出力しない
+
+            【出力形式】
+            宣伝文のみをそのまま出力。
+            `.trim();
+
+                let aiText = await callOpenRouterAPI(apiKey, prompt, model);
+
+                if (!aiText) {
                     throw new Error("AI生成に失敗しました");
                 }
 
-                text = text.trim();
+                // 後処理（自動投稿版と同じ）
+                let finalText = aiText
+                    .replace(/はい、.+?。/g, "")
+                    .replace(/以下.+?:/gi, "")
+                    .replace(/宣伝文.+?:/gi, "")
+                    .replace(/動画.+?(。|！)/g, "")
+                    .replace(/レビュー.+?(。|！)/g, "")
+                    .replace(/\n{2,}/g, "\n")
+                    .trim();
 
-                return `${text}\n${url}`;
+                // ポイントが無い商品はポイント行を削除
+                if (!product.points) {
+                    finalText = finalText.replace(/.*ポイント.*/g, "");
+                }
+
+                // URL が消えていたら最後に追加
+                if (!finalText.includes(url)) {
+                    finalText += "\n" + url;
+                }
+
+                // 180文字制限
+                if (finalText.length > 180) {
+                    finalText = finalText.substring(0, 177) + "…";
+                }
+
+                return finalText;
             }
 
 
