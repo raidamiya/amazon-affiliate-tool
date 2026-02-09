@@ -1356,6 +1356,37 @@ ${shortUrl}
                 return finalText;
             }
 
+            //順番に投稿
+            async function startBulkPost(mode) {
+                if (mode !== "detailed") return;
+
+                console.log("単体版：順番に投稿開始");
+
+                const items = window.lastDetailedResults || [];
+                if (!items.length) {
+                    alert("投稿する商品がありません。先に検索してください。");
+                    return;
+                }
+
+                for (const product of items) {
+                    console.log("投稿中:", product.asin);
+
+                    const text = await generatePostText(product);
+                    if (!text) continue;
+
+                    // Twitter投稿画面を開く
+                    window.open(
+                        `https://twitter.com/intent/tweet?text=${encodeURIComponent(text)}`,
+                        "_blank"
+                    );
+
+                    // 1秒待つ（連投防止）
+                    await new Promise(r => setTimeout(r, 1000));
+                }
+
+                console.log("単体版：投稿完了");
+            }
+
 
 
             function openTwitterPost(text) {
