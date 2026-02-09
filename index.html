@@ -1169,18 +1169,37 @@ ${shortUrl}
                     const imgMatch = block.match(/<img[^>]+src="([^"]+)"[^>]*>/);
                     const image = imgMatch ? imgMatch[1] : "";
 
-                    // ★ 価格は詳細ページから取得（超安定）
-                    const priceRaw = await getPriceFromDetailPage(asin);
-                    const price = priceRaw ? priceRaw.replace(/[^\d]/g, "") : null;
+                    // ★ まず検索結果ページから価格を試す（高速）
+                    let price = null;
 
-                    const discountMatch = block.match(/<span class="a-color-price">([^<]+)<\/span>/);
-                    const discount = discountMatch ? discountMatch[1].trim() : null;
+                    // パターン1: a-offscreen（最も正確）
+                    const p1 = block.match(/<span class="a-offscreen">([^<]+)<\/span>/);
+                    if (p1) price = p1[1].replace(/[^\d]/g, "");
 
+                    // パターン2: a-price-whole
+                    if (!price) {
+                        const p2 = block.match(/<span class="a-price-whole">([^<]+)<\/span>/);
+                        if (p2) price = p2[1].replace(/[^\d]/g, "");
+                    }
+
+                    // ★ 割引率（検索結果ページ対応）
+                    let discount = null;
+                    const d1 = block.match(/<span[^>]*class="a-color-price"[^>]*>([^<%]+%?)<\/span>/);
+                    if (d1 && d1[1]) discount = d1[1].trim();
+
+                    // ★ 星評価
                     const ratingMatch = block.match(/<span class="a-icon-alt">([^<]+)<\/span>/);
                     const rating = ratingMatch ? ratingMatch[1] : null;
 
+                    // ★ レビュー数
                     const reviewMatch = block.match(/<span[^>]*class="a-size-base s-underline-text">([^<]+)<\/span>/);
                     const reviewCount = reviewMatch ? reviewMatch[1].replace(/[^\d]/g, "") : null;
+
+                    // ★ 価格が取れなかった商品だけ詳細ページを見る（高速化）
+                    if (!price) {
+                        const priceRaw = await getPriceFromDetailPage(asin);
+                        price = priceRaw ? priceRaw.replace(/[^\d]/g, "") : null;
+                    }
 
                     results.push({
                         asin,
@@ -1191,14 +1210,16 @@ ${shortUrl}
                         rating,
                         reviewCount
                     });
+
+                    // ★ 5件で打ち切り（高速化）
+                    if (results.length >= 5) break;
                 }
 
-                const limited = results.slice(0, 5);
-                console.log("詳細検索結果（5件）:", limited);
+                console.log("詳細検索結果（5件）:", results);
 
-                renderDetailedResults(limited);
+                renderDetailedResults(results);
 
-                return limited;
+                return results;
             }
 
 
