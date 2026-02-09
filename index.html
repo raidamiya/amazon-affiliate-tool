@@ -1212,10 +1212,26 @@ ${shortUrl}
                             <div class="product-info">
                                 <div class="product-title">${item.title}</div>
                                 <div class="product-asin">ASIN: ${item.asin}</div>
-                                <div class="product-price">価格: ${item.price ? item.price + "円" : "不明"}</div>
-                                <div class="product-discount">${item.discount ? "割引: " + item.discount : ""}</div>
-                                <div class="product-rating">${item.rating ? "評価: " + item.rating : ""}</div>
-                                <div class="product-review">${item.reviewCount ? "レビュー: " + item.reviewCount : ""}</div>
+
+                                <div class="product-price">
+                                    価格: ${item.price ? item.price + "円" : "不明"}
+                                </div>
+
+                                <div class="product-discount">
+                                    ${item.discount ? "割引: " + item.discount : ""}
+                                </div>
+
+                                <div class="product-points">
+                                    ${item.points ? "ポイント: " + item.points + "pt" : ""}
+                                </div>
+
+                                <div class="product-rating">
+                                    ${item.rating ? "評価: " + item.rating : ""}
+                                </div>
+
+                                <div class="product-review">
+                                    ${item.reviewCount ? "レビュー: " + item.reviewCount : ""}
+                                </div>
 
                                 <button class="btn btn-primary"
                                     onclick="postSingleProduct('${item.asin}', '${item.title.replace(/'/g, "\\'")}')">
