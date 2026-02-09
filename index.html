@@ -2143,8 +2143,13 @@ ${tags}`;
                 return Math.round(score);
             }
 
+            // シャッフル関数（ASINの順番をランダム化）
+            function shuffle(array) {
+                return array.sort(() => Math.random() - 0.5);
+            }
 
             function extractMultipleASINs(html) {
+                // ASIN抽出
                 const matches = [...html.matchAll(/data-asin="([A-Z0-9]{10})"/g)];
                 let asins = matches
                     .map(m => m[1])
@@ -2154,14 +2159,12 @@ ${tags}`;
                 asins = [...new Set(asins)];
 
                 // ★ Prime Video / Kindle / Audible を除外
-                const filtered = asins.filter(asin => {
-                    // ASIN の前後300文字を取得して判定
+                asins = asins.filter(asin => {
                     const idx = html.indexOf(asin);
                     if (idx === -1) return false;
 
                     const block = html.slice(Math.max(0, idx - 300), idx + 300);
 
-                    // 除外キーワード
                     const ngWords = [
                         "Prime Video",
                         "/video/",
@@ -2175,8 +2178,15 @@ ${tags}`;
                     return !ngWords.some(ng => block.includes(ng));
                 });
 
-                return filtered;
+                // ★ ランダムシャッフル（毎回違う商品を選ぶため）
+                asins = shuffle(asins);
+
+                // ★ 上位5件だけ返す（多すぎると毎回同じ商品になる）
+                return asins.slice(0, 5);
             }
+
+
+            
 
         /* ============================================================
         🤖 AutoPosterManager v2.8（AI統合 × 完全自動化）
