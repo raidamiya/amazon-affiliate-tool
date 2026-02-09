@@ -1155,33 +1155,39 @@ ${shortUrl}
                     return [];
                 }
 
-                // 検索結果から ASIN と画像だけ取る
+                // 商品ブロック抽出
                 const blocks = [...html.matchAll(/<div[^>]+data-asin="([A-Z0-9]{10})"[^>]*>([\s\S]*?)<\/div>/g)];
 
                 const results = [];
+                const seenAsins = new Set();   // ★ 重複ASIN除外用
 
                 for (const match of blocks) {
                     const asin = match[1];
                     const block = match[2];
+
                     if (!asin) continue;
 
-                    // タイトル（検索結果の alt でOK）
+                    // ★ すでに見た ASIN はスキップ
+                    if (seenAsins.has(asin)) continue;
+                    seenAsins.add(asin);
+
+                    // タイトル（検索結果の alt）
                     const title = extractTitle(block);
 
                     // 画像
                     const imgMatch = block.match(/<img[^>]+src="([^"]+)"[^>]*>/);
                     const image = imgMatch ? imgMatch[1] : "";
 
-                    // ★ 商品詳細ページを取得して parseAmazonProduct で解析
+                    // ★ 商品詳細ページを取得して解析
                     const detail = await fetchWithProxy({ url: `https://www.amazon.co.jp/dp/${asin}` });
                     const product = parseAmazonProduct(detail.html);
 
-                    // ★ 検索結果の画像を優先（高確率で綺麗）
+                    // ★ 検索結果の画像を優先
                     if (image) product.image = image;
 
                     results.push(product);
 
-                    // 5件で打ち切り
+                    // ★ 5件で打ち切り
                     if (results.length >= 5) break;
                 }
 
