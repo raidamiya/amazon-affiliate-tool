@@ -1169,13 +1169,9 @@ ${shortUrl}
                     const imgMatch = block.match(/<img[^>]+src="([^"]+)"[^>]*>/);
                     const image = imgMatch ? imgMatch[1] : "";
 
-                    // ★ ここを差し替え：a-offscreen から価格を取る
-                    let price = null;
-                    const priceOffscreenMatch = block.match(/<span class="a-offscreen">([^<]+)<\/span>/);
-                    if (priceOffscreenMatch) {
-                        // 例: "￥2,170" → "2170"
-                        price = priceOffscreenMatch[1].replace(/[^\d]/g, "");
-                    }
+                    // ★ 価格は詳細ページから取得（超安定）
+                    const priceRaw = await getPriceFromDetailPage(asin);
+                    const price = priceRaw ? priceRaw.replace(/[^\d]/g, "") : null;
 
                     const discountMatch = block.match(/<span class="a-color-price">([^<]+)<\/span>/);
                     const discount = discountMatch ? discountMatch[1].trim() : null;
@@ -1197,9 +1193,11 @@ ${shortUrl}
                     });
                 }
 
-                const limited = results.slice(0, 10);
-                console.log("詳細検索結果（10件）:", limited);
+                const limited = results.slice(0, 5);
+                console.log("詳細検索結果（5件）:", limited);
+
                 renderDetailedResults(limited);
+
                 return limited;
             }
 
