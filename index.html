@@ -797,94 +797,105 @@
             }
         }
 
-        /* ============================
-           v2.7 新プロンプト生成
-        ============================ */
+        function createAIPrompt_v51(product, url) {
+                const pointText = product.points ? `${product.points}pt` : "";
 
-        function createAIPrompt_v27(productUrl, shortUrl) {
-            return `
-あなたは日本のSNSマーケティング専門家です。
-以下のAmazon商品URLから「商品名」「価格」「特徴」を抽出し、
-X（Twitter）向けの宣伝文を作成してください。
+                return `
+            あなたは日本のSNSマーケティング専門家です。
+            以下の商品情報を基に、X（Twitter）向けの宣伝文を1つだけ生成してください。
 
-【重要ルール】
-1. 180文字以内（厳守）
-2. 箇条書きに「✔」を使用
-3. 絵文字は2〜4個
-4. ハッシュタグは #Amazon を含めて2〜4個
-5. 読みやすく、クリックしたくなる文章
-6. URL（短縮URL）は必ず文末に置く
-7. 価格はページから抽出できた場合のみ含める
-8. 商品名は自然に短くしてもよい
+            【商品名】
+            ${product.title}
 
-【商品URL】
-${productUrl}
+            【価格】
+            ${product.price ? product.price + "円" : "価格情報なし"}
 
-【短縮URL】
-${shortUrl}
+            【割引】
+            ${product.discount || "割引情報なし"}
 
-出力は宣伝文のみ。説明文は不要。
+            【ポイント】
+            ${pointText}
+
+            【特徴】
+            ${product.description || "特徴情報なし"}
+
+            【URL】
+            ${url}
+
+            【厳守ルール】
+            - 出力は「宣伝文のみ」。説明・前置き・分析は禁止。
+            - 文章は3〜5行構成にする（改行を必ず入れる）
+            - 1行目：商品の魅力を短くキャッチーに
+            - 2行目：特徴を ✔ 箇条書きで2〜3個
+            - 3行目：価格・割引・ポイントを自然にまとめる（※価格は変動する可能性があります と添える）
+            - 4行目：ハッシュタグ（日本語優先、#Amazon を含めて 2〜4 個）
+            - 5行目：URL を文末に置く
+            - 絵文字は 2〜4 個
+            - 英語タグは禁止
+            - 割引率や価格の再計算は禁止（計算結果を出力しない）
+            - 180文字以内
+            - 宣伝文以外の文章を一切出力しない
+
+            【出力形式】
+            宣伝文のみをそのまま出力。
             `.trim();
-        }
-
-        /* ============================
-           AI宣伝文生成
-        ============================ */
-
-        async function generateAIPost() {
-            const apiKey = document.getElementById("ai-api-key").value.trim();
-            const productUrl = document.getElementById("ai-product-url").value.trim();
-            const tag = document.getElementById("tag-ai").value.trim();
-
-            if (!apiKey) return showError("ai", "APIキーを入力してください");
-            if (!productUrl) return showError("ai", "Amazon商品URLを入力してください");
-            if (!productUrl.includes("amazon.co.jp")) return showError("ai", "Amazon.co.jpのURLを入力してください");
-            if (!tag) return showError("ai", "アソシエイトタグを入力してください");
-
-            if (currentAIModel === "gemini") localStorage.setItem("geminiApiKey", apiKey);
-            if (currentAIModel === "grok") localStorage.setItem("grokApiKey", apiKey);
-            if (currentAIModel === "openrouter") localStorage.setItem("openrouterApiKey", apiKey);
-            localStorage.setItem("amazonTag", tag);
-
-            hideError("ai");
-            document.getElementById("loading-ai").style.display = "flex";
-
-            try {
-                const asin = extractASIN(productUrl);
-                const affiliateUrl = `https://www.amazon.co.jp/dp/${asin}?tag=${tag}`;
-                const shortUrl = await shortenUrl(affiliateUrl);
-
-                currentAIPrompt = createAIPrompt_v27(productUrl, shortUrl);
-
-                let generatedText = "";
-
-                if (currentAIModel === "gemini") {
-                    generatedText = await callGeminiAPI(apiKey, currentAIPrompt);
-
-                } else if (currentAIModel === "grok") {
-                    generatedText = await callGrokAPI(apiKey, currentAIPrompt);
-
-                } else if (currentAIModel === "openrouter") {
-                    const model = document.getElementById("openrouter-model").value;
-                    generatedText = await callOpenRouterAPI(apiKey, currentAIPrompt, model);
-                }
-
-                if (generatedText.length > 180) {
-                    generatedText = generatedText.substring(0, 177) + "…";
-                }
-
-                document.getElementById("ai-result-container").style.display = "block";
-                document.getElementById("ai-generated-text").value = generatedText;
-                currentPostText.ai = generatedText;
-                updateCharCount(generatedText, "ai");
-
-            } catch (error) {
-                showError("ai", "AI生成に失敗しました: " + error.message);
-
-            } finally {
-                document.getElementById("loading-ai").style.display = "none";
             }
-        }
+
+            async function generateAIPost() {
+                const apiKey = document.getElementById("ai-api-key").value.trim();
+                const productUrl = document.getElementById("ai-product-url").value.trim();
+                const tag = document.getElementById("tag-ai").value.trim();
+
+                if (!apiKey) return showError("ai", "APIキーを入力してください");
+                if (!productUrl) return showError("ai", "Amazon商品URLを入力してください");
+                if (!productUrl.includes("amazon.co.jp")) return showError("ai", "Amazon.co.jpのURLを入力してください");
+                if (!tag) return showError("ai", "アソシエイトタグを入力してください");
+
+                hideError("ai");
+                document.getElementById("loading-ai").style.display = "flex";
+
+                try {
+                    const asin = extractASIN(productUrl);
+                    const affiliateUrl = `https://www.amazon.co.jp/dp/${asin}?tag=${tag}`;
+                    const shortUrl = await shortenUrl(affiliateUrl);
+
+                    // ★ 商品ページを取得して解析（v5.1）
+                    const detail = await fetchWithProxy({ url: `https://www.amazon.co.jp/dp/${asin}` });
+                    const product = parseAmazonProduct(detail.html);
+
+                    // ★ v5.1 プロンプト生成
+                    const prompt = createAIPrompt_v51(product, shortUrl);
+
+                    let generatedText = "";
+
+                    if (currentAIModel === "gemini") {
+                        generatedText = await callGeminiAPI(apiKey, prompt);
+
+                    } else if (currentAIModel === "grok") {
+                        generatedText = await callGrokAPI(apiKey, prompt);
+
+                    } else if (currentAIModel === "openrouter") {
+                        const model = document.getElementById("openrouter-model").value;
+                        generatedText = await callOpenRouterAPI(apiKey, prompt, model);
+                    }
+
+                    // 180文字制限
+                    if (generatedText.length > 180) {
+                        generatedText = generatedText.substring(0, 177) + "…";
+                    }
+
+                    document.getElementById("ai-result-container").style.display = "block";
+                    document.getElementById("ai-generated-text").value = generatedText;
+                    currentPostText.ai = generatedText;
+                    updateCharCount(generatedText, "ai");
+
+                } catch (error) {
+                    showError("ai", "AI生成に失敗しました: " + error.message);
+
+                } finally {
+                    document.getElementById("loading-ai").style.display = "none";
+                }
+            }
 
         /* ============================
            再生成
@@ -2405,6 +2416,18 @@ ${tags}`;
                 return asins.slice(0, 5);
             }
 
+            function sanitizeKeyword(keyword) {
+                return keyword
+                    .replace(/[［\[]/g, "")     // 全角・半角 [
+                    .replace(/[］\]]/g, "")     // 全角・半角 ]
+                    .replace(/[（(]/g, "")      // 全角・半角 (
+                    .replace(/[）)]/g, "")      // 全角・半角 )
+                    .replace(/×/g, " ")         // × をスペースに
+                    .replace(/　/g, " ")        // 全角スペース → 半角
+                    .replace(/[™®]/g, "")       // 商標記号
+                    .replace(/\s+/g, " ")       // 連続スペースを1つに
+                    .trim();
+            }
 
             
 
@@ -2553,16 +2576,21 @@ ${tags}`;
             
 
             /* ------------------------------------
-            次の投稿処理（AI統合）
+                次の投稿処理（AI統合）
             ------------------------------------ */
             async processNext() {
                 if (!this.isRunning) return;
 
-                const keyword = this.keywords[this.currentKeywordIndex];
+                // ▼ 元のキーワード
+                const rawKeyword = this.keywords[this.currentKeywordIndex];
+
+                // ★ ここで正規化（sanitizeKeyword）
+                const keyword = sanitizeKeyword(rawKeyword);
+
+                // ★ ログも正規化後のキーワードを表示
                 this.log(`🔍 キーワード検索: ${keyword}`, "info");
 
                 try {
-
                     // ▼ 商品リストが空なら fetchProductSmart を実行
                     if (this.currentProductIndex === 0 || this.currentProducts.length === 0) {
 
@@ -2576,33 +2604,26 @@ ${tags}`;
                             return this.scheduleNext();
                         }
 
-                        // ★ 正しい currentProducts の構造
                         this.currentProducts = [result];
                         console.log("currentProducts:", this.currentProducts);
                     }
 
-                    // ▼ 正しい取り出し方（result オブジェクト）
+                    // ▼ 正しい取り出し方
                     const result = this.currentProducts[this.currentProductIndex];
 
                     const html = result.html;
                     const asin = result.asin;
                     const title = result.title;
 
-                    // 商品取得成功
-                        this.log(`📦 商品取得: ${result.title}`, "info");
+                    this.log(`📦 商品取得: ${result.title}`, "info");
+                    this.log(`⭐ 売れやすさスコア: ${result.score}`, "info");
+                    this.log(
+                        `📊 スコア理由 → 価格:${result.price} / 割引:${result.discount} / 星:${result.rating} / レビュー:${result.reviewCount} / ポイント:${result.points} / ベストセラー:${result.isBestSeller}`,
+                        "info"
+                    );
 
-                        // ★ 売れやすさスコア
-                        this.log(`⭐ 売れやすさスコア: ${result.score}`, "info");
-
-                        // ★ スコア理由（価格・割引・レビュー・星評価・ポイント）
-                        this.log(
-                            `📊 スコア理由 → 価格:${result.price} / 割引:${result.discount} / 星:${result.rating} / レビュー:${result.reviewCount} / ポイント:${result.points} / ベストセラー:${result.isBestSeller}`,
-                            "info"
-                        );
-                    // ▼ HTML → 商品情報
                     const product = parseAmazonProduct(html);
 
-                    // ▼ AIで宣伝文生成
                     const postText = await this.generatePostText(product);
 
                     if (!postText) {
@@ -2611,17 +2632,14 @@ ${tags}`;
                         return;
                     }
 
-                    // ▼ 投稿
                     this.openTwitterPost(postText);
 
                     this.stats.totalPosts++;
                     this.stats.successPosts++;
 
                     this.log("🐦 投稿完了", "success");
-                                        
-                    // ★ ここで ASIN を保存する
-                    PostedASINStore.add(asin);
 
+                    PostedASINStore.add(asin);
 
                     this.savePostedKeyword(keyword);
                     this.currentProductIndex++;
