@@ -1792,13 +1792,16 @@ ${tags}`;
             }
 
             /* ============================
-            v3.4 30ワード生成（安定版）
+            v5.1 30ワード生成（カテゴリシャッフル版）
             ============================ */
             async function get30TrendingKeywords() {
                 const allCandidates = [];
 
+                // ★ カテゴリを毎回ランダムシャッフル
+                const shuffledCategories = [...amazonRankingCategories].sort(() => Math.random() - 0.5);
+
                 // ① ランキングページから ASIN & タイトルを大量取得
-                for (const cat of amazonRankingCategories) {
+                for (const cat of shuffledCategories) {
                     const items = await getRankingItems(cat.url, 20);
                     allCandidates.push(...items);
                 }
