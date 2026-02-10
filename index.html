@@ -2188,7 +2188,7 @@ ${tags}`;
 
             async function fetchProductSmart(item) {
                 const keyword = item.title;
-
+                    console.log("fetchProductSmart検索文字:", item.title);
                 try {
                     // ① Amazon検索ページを取得
                     const searchUrl = `https://www.amazon.co.jp/s?k=${encodeURIComponent(keyword)}`;
